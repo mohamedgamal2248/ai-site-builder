@@ -1,0 +1,37 @@
+:root {
+  --bg: #fbfaf7;
+  --fg: #1d1b16;
+  --muted: #6b665c;
+  --line: #e6e1d6;
+  --accent: #0f766e;
+  --card: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14130f;
+    --fg: #efece4;
+    --muted: #a39d90;
+    --line: #2d2a23;
+    --accent: #2dd4bf;
+    --card: #1b1a15;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.7 system-ui, "Segoe UI", Tahoma, sans-serif;
+}
+main { max-width: 760px; margin: 0 auto; padding: 48px 16px 80px; }
+h1 { font-size: 2rem; line-height: 1.25; margin: 0 0 12px; }
+h2 { font-size: 1.2rem; margin: 40px 0 12px; }
+p, li { color: var(--muted); }
+strong { color: var(--fg); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+pre { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; direction: ltr; text-align: left; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 12px 0; }
+form { display: flex; gap: 8px; flex-wrap: wrap; }
+input { flex: 1 1 240px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: inherit; direction: ltr; }
+button, .btn { padding: 10px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; cursor: pointer; text-decoration: none; display: inline-block; }
+@media (prefers-color-scheme: dark) { button, .btn { color: #0b1f1d; } }

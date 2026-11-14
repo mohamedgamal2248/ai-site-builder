@@ -1,144 +1,70 @@
-# AI Agent Site Builder — MVP
+# وصل (Wasl)
 
-منصة عربية صغيرة تولّد مواقع Vanilla HTML/CSS/JS عبر Gemini، وتستطيع إنشاء Supabase، رفع الملفات إلى GitHub، ثم نشرها على Vercel.
+منصة بتربط متاجر **سلة وزد وWooCommerce** بوكلاء الذكاء الاصطناعي. الوكيل بيدوّر على المنتجات، وبيجهّز للعميل **رابط شراء**، والعميل **بيدفع على موقع التاجر نفسه** بأي طريقة متاحة هناك، حتى الدفع عند الاستلام. وصل ما بيستلمش أي فلوس.
 
-## الحدود المقصودة في النسخة الحالية
+```
+متجر سلة / زد / WooCommerce ──(API + Webhooks)──► وصل: كتالوج موحد
+                                                    │
+        ┌───────────────────────────────────────────┼──────────────────┐
+        ▼                                           ▼                  ▼
+  MCP server (/api/mcp)                     REST API (/api/v1)     llms.txt
+        │
+        ▼
+  الوكيل يدي العميل رابط /c/{token} ──302──► صفحة المنتج أو السلة عند التاجر (+ wasl_ref)
+                                                    │
+                       webhook الطلب ◄──────────────┘  ← نسب الطلب: دقيق / محتمل
+```
 
-- الواجهة كلها في `index.html` واحد.
-- توجد 4 ملفات API فقط داخل `api/`.
-- تستخدم توكنات مالك المنصة؛ لذلك هذه نسخة شخصية/MVP. قبل فتحها لمستخدمين آخرين يجب استبدال التوكنات العامة بـ OAuth أو GitHub App وSupabase/Vercel integrations لكل مستخدم.
-- إنشاء مشروع Supabase جديد قد يفشل عندما يصل الحساب إلى حد المشاريع أو يتطلب خطة مدفوعة.
-- endpoint تشغيل SQL في Supabase Management API مصنف Beta وقد يتغير.
-- المشروع الناتج Vanilla لتقليل أخطاء البناء والتكلفة.
+## الحالة الحالية
 
-## 1) المتطلبات
+| الجزء | الحالة |
+|---|---|
+| MCP server: `search_products` و`get_product` و`create_checkout_link` | ✅ مُختبر، وكمان مع عميل MCP SDK الرسمي |
+| REST API: البحث والمنتج ورابط الشراء | ✅ |
+| روابط شراء موقّعة (HMAC) وتسجيل الضغطات وتحويل 302 | ✅ |
+| بحث عربي/إنجليزي (توحيد الهمزات والتاء المربوطة وحذف "ال") + فلترة بالدولة والسعر | ✅ |
+| موصل WooCommerce: الربط والمزامنة والسلة الجاهزة والـ Webhooks والنسب الدقيق (مع الإضافة) | ✅ في الكود، ⚠️ محتاج تجربة على متجر حقيقي |
+| موصل سلة: Easy Mode والمزامنة والـ Webhooks وتجديد التوكن | ✅ في الكود، ⚠️ محتاج تطبيق في بوابة الشركاء ومتجر تجريبي |
+| موصل زد: OAuth والمزامنة والـ Webhooks | ✅ في الكود، ⚠️ بعض أسماء الحقول غير مؤكدة (شوف `docs/API_RESEARCH.md`) |
+| نسب الطلبات (دقيق / محتمل خلال 48 ساعة) | ✅ |
+| قاعدة بيانات Supabase مع تشفير التوكنات (AES-256-GCM) | ✅ في الكود، ⚠️ ما اتجربتش على مشروع Supabase حقيقي |
+| لوحة التاجر، وفيد Google Merchant، وUCP، والاشتراكات | ⏭ الخطوة الجاية |
 
-- Node.js 22
-- حساب Gemini API
-- حساب Supabase
-- حساب GitHub
-- حساب Vercel
-
-## 2) إعداد Supabase الخاص بالمنصة
-
-هذا المشروع يحتاج مشروع Supabase ثابت لتخزين build jobs.
-
-1. أنشئ Project عاديًا في Supabase Dashboard.
-2. افتح SQL Editor.
-3. انسخ وشغّل محتوى `supabase/builder-schema.sql`.
-4. من Project Settings > API انسخ:
-   - Project URL إلى `BUILDER_SUPABASE_URL`
-   - Secret/service-role key إلى `BUILDER_SUPABASE_SERVICE_ROLE_KEY`
-5. لا تضع service-role key في المتصفح أو داخل GitHub.
-
-## 3) Gemini
-
-1. أنشئ API key من Google AI Studio.
-2. ضع المفتاح في `GEMINI_API_KEY`.
-3. اترك `GEMINI_MODEL=gemini-2.5-flash` أو غيّره إلى موديل متاح في حسابك.
-
-## 4) GitHub
-
-### MVP شخصي
-
-1. أنشئ Fine-grained Personal Access Token.
-2. امنحه صلاحية إنشاء/إدارة repositories وContents: Read and write للحساب أو المنظمة المطلوبة.
-3. ضع التوكن في `GITHUB_TOKEN`.
-4. ضع اسم حساب GitHub في `GITHUB_OWNER`.
-5. تأكد أن حساب GitHub مربوط بحساب Vercel وأن Vercel GitHub App مسموح له بالوصول إلى الـrepository، خصوصًا لو كان Private.
-
-> للإنتاج متعدد المستخدمين: استخدم GitHub App أو OAuth بدل توكن واحد.
-
-## 5) Supabase Management API لإنشاء قواعد للعملاء
-
-هذا الجزء اختياري. لو المستخدم ألغى اختيار Supabase، لن يتم استدعاؤه.
-
-1. من Supabase Account Tokens أنشئ Personal Access Token.
-2. ضعه في `SUPABASE_MANAGEMENT_TOKEN`.
-3. افتح organization settings وخذ Organization ID وضعه في `SUPABASE_ORGANIZATION_ID`.
-4. ضع منطقة صحيحة في `SUPABASE_DEFAULT_REGION`، مثال `eu-central-1` بحسب المناطق المتاحة لحسابك.
-
-التوكن يحمل صلاحيات حسابك، لذلك احتفظ به في Vercel Environment Variables فقط.
-
-## 6) Vercel
-
-1. أنشئ Access Token من Vercel Account Settings.
-2. ضعه في `VERCEL_TOKEN`.
-3. لو تنشر داخل Team، ضع Team ID في `VERCEL_TEAM_ID`. اتركه فارغًا للحساب الشخصي.
-4. اربط GitHub بحساب Vercel من Integrations، واسمح له بالوصول للمستودعات التي ستنشئها المنصة.
-
-## 7) تشغيل محلي
+## التشغيل محلياً
 
 ```bash
-cp .env.example .env.local
 npm install
-npm run check
-npx vercel dev
+npm run dev        # http://localhost:3000 — من غير Supabase بيشتغل على بيانات تجريبية في الذاكرة
+npm test           # 26 اختبار
+npm run typecheck
 ```
 
-ثم افتح العنوان الذي يظهر، غالبًا `http://localhost:3000`.
-
-ملاحظة: `vercel dev` يقرأ `.env.local` عند ربط المشروع أو حسب إعداد CLI. يمكنك أيضًا تشغيل `vercel env pull .env.local` بعد ربطه.
-
-## 8) رفع المشروع إلى GitHub
-
-من داخل مجلد المشروع:
-
+جرّب الـ MCP:
 ```bash
-git init
-git add .
-git commit -m "Initial AI Site Builder"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/ai-site-builder.git
-git push -u origin main
+curl -s localhost:3000/api/mcp -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_products","arguments":{"query":"عطر عود","country":"SA"}}}'
 ```
 
-لا ترفع `.env.local`؛ الملف موجود في `.gitignore`.
+## النشر على Vercel
 
-## 9) النشر على Vercel
+1. **Supabase:** اعمل مشروع، وشغّل `supabase/migrations/0001_init.sql` في SQL Editor.
+2. **Vercel:** اعمل مشروع جديد من الريبو، وضيف المتغيرات اللي في `.env.example`.
+   - لازم تضيف: `APP_URL` و`LINK_SIGNING_SECRET` و`TOKEN_ENCRYPTION_KEY` و`SUPABASE_URL` و`SUPABASE_SERVICE_ROLE_KEY` و`CRON_SECRET`.
+   - المزامنة اليومية بتتعمل لوحدها عن طريق `vercel.json` (الساعة 3 الفجر UTC).
+3. **سلة:** في بوابة الشركاء، اعمل تطبيق Easy Mode، وحط رابط الـ webhook `{APP_URL}/api/webhooks/salla`، واختار Signature، وضيف `SALLA_*`.
+4. **زد:** في Partner Dashboard، حط callback `{APP_URL}/api/connect/zid/callback`، وضيف `ZID_*`.
+5. **WooCommerce:** التاجر بيفتح الصفحة الرئيسية ويكتب رابط متجره، وبعدها يثبّت `plugins/wasl-woocommerce` عشان النسب الدقيق.
 
-### من Dashboard
+## إضافة وصل لعميل MCP
 
-1. افتح Vercel ثم Add New > Project.
-2. اختر repository الخاص بالـBuilder.
-3. Framework Preset: Other.
-4. لا تحتاج Build Command أو Output Directory.
-5. أضف كل متغيرات `.env.example` في Settings > Environment Variables.
-6. اضغط Deploy.
+الرابط: `{APP_URL}/api/mcp` (Streamable HTTP). مثلاً في Claude: Settings ثم Connectors ثم Add custom connector.
 
-### من CLI
+## الملفات المهمة
 
-```bash
-npx vercel
-npx vercel env add GEMINI_API_KEY
-# كرر للأسرار المطلوبة
-npx vercel --prod
-```
-
-## 10) اختبار الإعداد
-
-بعد النشر افتح:
-
-```text
-https://YOUR-BUILDER.vercel.app/api/health
-```
-
-سيعرض أسماء المتغيرات وحالتها كـ true/false، ولن يعرض قيم المفاتيح.
-
-## 11) حماية واجهة المنصة
-
-ضع قيمة عشوائية طويلة في `BUILDER_ACCESS_KEY`. عند استخدام الواجهة، أدخل نفس القيمة في الحقل المخصص. هذا مناسب للحماية الشخصية البسيطة، وليس بديلًا عن Login وRate Limiting.
-
-## 12) دورة التنفيذ
-
-1. `/api/start` ينشئ Job.
-2. `/api/step` يولد الملفات عبر Gemini.
-3. ينشئ Supabase ويشغّل SQL لو كان مطلوبًا.
-4. ينشئ GitHub repository ويدفع كل الملفات في Commit واحد.
-5. ينشئ Vercel project ويضيف المتغيرات العامة.
-6. يشغل production deployment ويتابع حالته.
-7. `/api/status` يعيد رابط الموقع وGitHub.
-
-## 13) قبل فتح المشروع للجمهور
-
-أضف Auth حقيقي، Rate limiting، نظام credits، تشفير OAuth tokens، webhook/queue لاستكمال المهام حتى عند إغلاق الصفحة، وفحص build داخل sandbox. لا تسمح لنموذج AI بتشغيل أوامر shell أو SQL غير مفحوصة.
+- `src/lib/mcp.ts`: خادم MCP.
+- `src/lib/services.ts`: البحث وروابط الشراء والمزامنة ونسب الطلبات.
+- `src/lib/connectors/`: سلة وزد وWooCommerce.
+- `src/lib/links.ts`: الروابط الموقّعة.
+- `src/lib/db/`: الذاكرة وSupabase.
+- `docs/API_RESEARCH.md`: نتايج مراجعة الـ APIs والحاجات اللي لسه محتاجة تأكيد.
+- `docs/OUTREACH_MESSAGES.md`: الرسايل لجوجل وسلة وزد وOpenAI وPerplexity.
