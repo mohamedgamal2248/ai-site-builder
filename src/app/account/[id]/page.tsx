@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { OpTable } from "@/components/OpTable";
 import { TxTable } from "@/components/TxTable";
 import { AccountLink, Amount, Card, Copyable, DataTable, Facts, PageTitle, Pager } from "@/components/ui";
-import { assetLabel, canonicalAssetLabel, expiryTime, formatAmount, formatDate, shortId, unlockTime } from "@/lib/format";
+import { assetLabel, canonicalAssetLabel, expiryTime, formatAmount, formatDate, lockOwner, shortId, unlockTime } from "@/lib/format";
 import type { SearchParams } from "@/lib/found";
 import { horizon, HorizonError, type Account, type Balance, type ClaimableBalance } from "@/lib/horizon";
 import { paged, readPageParams } from "@/lib/paging";
@@ -142,7 +142,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
               {
                 label: t.unlocksAt,
                 cell: (c) => {
-                  const mine = c.claimants.find((x) => x.destination === id) ?? c.claimants[0];
+                  const mine = c.claimants.find((x) => x.destination === id) ?? lockOwner(c.claimants)!;
                   const at = unlockTime(mine.predicate);
                   const exp = expiryTime(mine.predicate);
                   if (at && Date.parse(at) > Date.now()) return formatDate(at, lang);

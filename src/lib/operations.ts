@@ -1,5 +1,5 @@
 import type { Operation } from "./horizon";
-import { assetLabel, canonicalAssetLabel, unlockTime } from "./format";
+import { assetLabel, canonicalAssetLabel, lockOwner, unlockTime } from "./format";
 import type { Lang } from "./i18n";
 
 /** A sentence made of plain text, account links and amounts, rendered by <OpSummary>. */
@@ -50,7 +50,7 @@ export function summarize(op: Operation, lang: Lang, native = "Pi"): Part[] {
       return [text(`${w.name}: ${str(op.name)}`), ...(op.value ? [] : [text(`(${w.remove})`)])];
     case "create_claimable_balance": {
       const claimants = Array.isArray(op.claimants) ? (op.claimants as { destination: string; predicate: never }[]) : [];
-      const first = claimants[0];
+      const first = lockOwner(claimants);
       const when = first ? unlockTime(first.predicate) : null;
       return [
         amt(op.amount, canonicalAssetLabel(str(op.asset), native)),

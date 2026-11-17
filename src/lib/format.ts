@@ -105,3 +105,11 @@ export function classifySearch(raw: string): SearchTarget {
   if (/^[a-zA-Z0-9]{1,12}$/.test(q)) return { kind: "asset", value: q.toUpperCase() };
   return { kind: "unknown", value: q };
 }
+
+/**
+ * The real owner of a Pi lockup. Migration lockups have two claimants: the sender, who can
+ * take it back only before a date, and the owner, who can claim only after a date ({ not: … }).
+ */
+export function lockOwner<T extends { destination: string; predicate: Predicate }>(claimants: T[]): T | undefined {
+  return claimants.find((c) => unlockTime(c.predicate)) ?? claimants[claimants.length - 1];
+}

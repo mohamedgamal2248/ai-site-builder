@@ -1,0 +1,31 @@
+name: Ingest Pi statistics
+
+# Keeps the statistics tables fresh. Needs the repository secret DATABASE_URL
+# (Settings → Secrets and variables → Actions). GitHub may delay scheduled runs by a few minutes.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+    inputs:
+      budget:
+        description: "Seconds to run (use up to 18000 for the first lockup backfill)"
+        default: "480"
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/ingest.ts --schema --budget=${{ github.event.inputs.budget || '480' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

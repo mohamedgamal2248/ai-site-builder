@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AccountLink, Amount, Card, DataTable, PageTitle, Pager } from "@/components/ui";
-import { canonicalAssetLabel, formatAmount, formatDate, unlockTime } from "@/lib/format";
+import { canonicalAssetLabel, formatAmount, formatDate, lockOwner, unlockTime } from "@/lib/format";
 import type { SearchParams } from "@/lib/found";
 import { horizon, type ClaimableBalance } from "@/lib/horizon";
 import { paged, readPageParams } from "@/lib/paging";
@@ -28,11 +28,12 @@ export default async function Locked({ searchParams }: { searchParams: SearchPar
           empty={t.noRecords}
           columns={[
             { label: t.amount, cell: (c) => <Amount value={c.amount} asset={canonicalAssetLabel(c.asset, native)} />, className: "num" },
-            { label: t.claimant, cell: (c) => <AccountLink id={c.claimants[0]?.destination ?? ""} /> },
+            { label: t.claimant, cell: (c) => <AccountLink id={lockOwner(c.claimants)?.destination ?? ""} /> },
             {
               label: t.unlocksAt,
               cell: (c) => {
-                const at = c.claimants[0] ? unlockTime(c.claimants[0].predicate) : null;
+                const owner = lockOwner(c.claimants);
+                const at = owner ? unlockTime(owner.predicate) : null;
                 return at && Date.parse(at) > Date.now() ? formatDate(at, lang) : <span className="badge ok">{t.claimableNow}</span>;
               },
             },
