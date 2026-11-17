@@ -1,3 +1,4 @@
+import { Ago } from "@/components/Ago";
 import { AccountLink, Amount, DataTable, TxLink } from "@/components/ui";
 import { formatDate, timeAgo } from "@/lib/format";
 import type { InsightDict } from "@/lib/i18n-insights";
@@ -40,7 +41,7 @@ export function AlertList({ rows, x, lang, native, empty }: { rows: AlertRow[]; 
               "—"
             ),
         },
-        { label: "⏱", cell: (r) => <span title={formatDate(r.at, lang)} suppressHydrationWarning>{timeAgo(r.at, now, lang)}</span>, m: "meta" },
+        { label: "⏱", cell: (r) => <Ago iso={r.at} lang={lang} title={formatDate(r.at, lang)} />, m: "meta" },
         { label: "Tx", cell: (r) => (r.tx_hash ? <TxLink hash={r.tx_hash} /> : "—"), m: "meta" },
       ]}
     />

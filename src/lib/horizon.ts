@@ -16,9 +16,14 @@ export function horizonHost(net: Network) {
 }
 
 /** How long a response may be reused. Ledgers and transactions never change once closed. */
+/*
+ * Server-side data cache lifetimes. Pages are cached on the CDN and the browser streams live
+ * data straight from Horizon, so server reads never need to be fresher than 30 seconds (a
+ * shorter fetch lifetime would also force the cached page to rebuild that often).
+ */
 export const CACHE = {
-  live: 4,
-  short: 15,
+  live: 30,
+  short: 30,
   medium: 60,
   immutable: 60 * 60 * 24 * 30,
 } as const;

@@ -3,11 +3,10 @@ import type { Settings } from "@/lib/settings";
 import { insightDicts } from "@/lib/i18n-insights";
 import { NavMenu } from "./NavMenu";
 import { SearchBox } from "./SearchBox";
-
-const NEXT_THEME = { auto: "light", light: "dark", dark: "auto" } as const;
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Header({ s }: { s: Settings }) {
-  const { t, lang, net, theme } = s;
+  const { t, lang, net } = s;
   const x = insightDicts[lang];
   const insights: [string, string][] = [["/pressure", x.index], ["/pressure/accuracy", x.accuracy], ["/alerts", x.alerts], ["/radar", x.radar], ["/whale-tracker", x.whaleTracker], ["/depth", x.depth], ["/report", x.report], ["/news", x.news]];
   const groups = [
@@ -18,18 +17,6 @@ export function Header({ s }: { s: Settings }) {
     { label: t.groupTools, items: [["/wallets", t.wallets], ["/richlist", t.richlist], ["/watchlist", t.watchlist], ["/api-docs", t.apiDocs], ["/status", t.status]] as [string, string][] },
   ];
   const quick: [string, string][] = [["/", t.home], ["/pressure", x.index], ["/whales", t.whales], ["/flows", t.flows], ["/txs", t.transactions], ["/unlocks", t.unlocks]];
-  const themeLabel = { auto: t.themeAuto, light: t.themeLight, dark: t.themeDark }[theme];
-  const themeIcon = {
-    auto: <path d="M12 3a9 9 0 1 0 0 18V3Z" fill="currentColor" stroke="none" />,
-    light: (
-      <>
-        <circle cx="12" cy="12" r="4" />
-        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-      </>
-    ),
-    dark: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />,
-  }[theme];
-
   return (
     <>
       <header className="site-header">
@@ -53,12 +40,7 @@ export function Header({ s }: { s: Settings }) {
           }}
         />
           <div className="toggles">
-            <a className="icon-pill" href={`/settings?k=theme&v=${NEXT_THEME[theme]}`} title={`${t.theme}: ${themeLabel}`} aria-label={`${t.theme}: ${themeLabel}`}>
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                {theme === "auto" ? <circle cx="12" cy="12" r="9" /> : null}
-                {themeIcon}
-              </svg>
-            </a>
+            <ThemeToggle labels={{ theme: t.theme, auto: t.themeAuto, light: t.themeLight, dark: t.themeDark }} />
             <a className={`net-pill ${net}`} href={`/settings?k=net&v=${net === "mainnet" ? "testnet" : "mainnet"}`} title={t.network}>
               <span className="dot" aria-hidden="true" />
               <span className="net-long">{net === "mainnet" ? t.mainnet : t.testnet}</span>
