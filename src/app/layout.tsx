@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Footer, Header } from "@/components/Header";
 import { getSettings } from "@/lib/settings";
+import { SwRegister } from "@/components/SwRegister";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -9,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: `${t.siteName} · ${t.tagline}`, template: `%s · ${t.siteName}` },
     description: t.disclaimer,
-    icons: { icon: "/icon.svg" },
+    icons: { icon: "/icon.svg", apple: "/icons/icon-192.png" },
   };
 }
 
@@ -30,6 +31,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <Header s={s} />
         <main className="container main">{children}</main>
         <Footer s={s} />
+        <SwRegister />
       </body>
     </html>
   );

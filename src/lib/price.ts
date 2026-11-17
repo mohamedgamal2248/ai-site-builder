@@ -55,3 +55,25 @@ export async function getMarket(): Promise<Market | null> {
     return null;
   }
 }
+
+export type PriceRange = "24h" | "7d" | "30d";
+const BARS: Record<PriceRange, [string, number]> = { "24h": ["15m", 96], "7d": ["1H", 168], "30d": ["4H", 180] };
+
+/** Closing prices for PI/USDT from OKX candles, oldest first. Cached for 2 minutes. */
+export async function getCandles(range: PriceRange): Promise<{ t: number; v: number }[]> {
+  const [bar, limit] = BARS[range];
+  try {
+    const res = await fetch(`https://www.okx.com/api/v5/market/candles?instId=PI-USDT&bar=${bar}&limit=${limit}`, {
+      next: { revalidate: 120 },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const body = (await res.json()) as { data?: string[][] };
+    return (body.data ?? [])
+      .map((c) => ({ t: Number(c[0]), v: Number(c[4]) }))
+      .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v))
+      .reverse();
+  } catch {
+    return [];
+  }
+}

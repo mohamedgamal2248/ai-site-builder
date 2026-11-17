@@ -6,6 +6,8 @@ import { knownWallets, type KnownWallet, type WalletCategory } from "@/data/wall
 import { compact, formatAmount } from "@/lib/format";
 import { horizon } from "@/lib/horizon";
 import { getSettings } from "@/lib/settings";
+import { Sparkline } from "@/components/Sparkline";
+import { getFlows, getWalletHistory, statsEnabled } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Known wallets" };
@@ -45,7 +47,18 @@ export default async function Wallets() {
         .catch(() => null),
     ),
   );
-  const rows = list.map((w, i) => ({ ...w, balance: balances[i] }));
+  const db = statsEnabled() && list.length > 0;
+  const [hist, flows] = await Promise.all([
+    db ? getWalletHistory(net, 90).catch(() => []) : Promise.resolve([]),
+    db ? getFlows(net, list.map((w) => w.address), 30).catch(() => []) : Promise.resolve([]),
+  ]);
+  const rows = list.map((w, i) => ({
+    ...w,
+    balance: balances[i],
+    history: hist.filter((h) => h.address === w.address).map((h) => Number(h.balance)),
+    flowIn: flows.filter((f) => f.address === w.address).reduce((s, f) => s + Number(f.inflow), 0),
+    flowOut: flows.filter((f) => f.address === w.address).reduce((s, f) => s + Number(f.outflow), 0),
+  }));
   const total = rows.reduce((sum, r) => sum + Number(r.balance ?? 0), 0);
   const groups: WalletCategory[] = ["foundation", "exchange", "whale"];
 
@@ -66,7 +79,7 @@ export default async function Wallets() {
             {g === "exchange" ? <p className="warn">⚠️ {x.exchangeWarn}</p> : null}
             <div className="wallet-grid">
               {items.map((w) => (
-                <WalletCard key={w.address} w={w} lang={lang} native={native} namesFrom={x.namesFrom} copy={t.copy} copied={t.copied} />
+                <WalletCard key={w.address} w={w} lang={lang} native={native} namesFrom={x.namesFrom} copy={t.copy} copied={t.copied} labels={{ history: t.balanceHistory, flows: t.flows30, inflow: t.received, outflow: t.sent }} />
               ))}
             </div>
             {g === "exchange" ? <p className="muted" style={{ fontSize: 13 }}>{x.missing}</p> : null}
@@ -77,7 +90,7 @@ export default async function Wallets() {
   );
 }
 
-function WalletCard({ w, lang, native, namesFrom, copy, copied }: { w: KnownWallet & { balance: string | null }; lang: "ar" | "en"; native: string; namesFrom: string; copy: string; copied: string }) {
+function WalletCard({ w, lang, native, namesFrom, copy, copied, labels }: { w: KnownWallet & { balance: string | null; history: number[]; flowIn: number; flowOut: number }; lang: "ar" | "en"; native: string; namesFrom: string; copy: string; copied: string; labels: { history: string; flows: string; inflow: string; outflow: string } }) {
   const note = lang === "ar" ? w.noteAr : w.note;
   return (
     <article className="card wallet-card">
@@ -93,6 +106,12 @@ function WalletCard({ w, lang, native, namesFrom, copy, copied }: { w: KnownWall
       <div className="wallet-balance">
         {w.balance === null ? "—" : <><bdi dir="ltr">{formatAmount(Number(w.balance).toFixed(0))}</bdi> <span className="unit">{native}</span></>}
       </div>
+      {w.history.length > 1 ? <Sparkline values={w.history} label={labels.history} /> : null}
+      {w.flowIn || w.flowOut ? (
+        <div className="wallet-source">
+          {labels.flows}: {labels.inflow} <bdi dir="ltr">{compact(w.flowIn, lang)}</bdi> · {labels.outflow} <bdi dir="ltr">{compact(w.flowOut, lang)}</bdi>
+        </div>
+      ) : null}
       {note ? <div className="wallet-note">{note}</div> : null}
       <div className="wallet-source">{namesFrom}: {lang === "ar" ? w.sourceAr : w.source}</div>
     </article>

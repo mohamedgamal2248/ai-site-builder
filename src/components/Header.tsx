@@ -9,11 +9,11 @@ export function Header({ s }: { s: Settings }) {
   const { t, lang, net, theme } = s;
   const groups = [
     { label: t.groupChain, items: [["/blocks", t.blocks], ["/txs", t.transactions], ["/operations", t.operations]] as [string, string][] },
-    { label: t.groupStats, items: [["/stats", t.stats], ["/unlocks", t.unlocks], ["/largest", t.largest], ["/locked", t.locked]] as [string, string][] },
+    { label: t.groupStats, items: [["/stats", t.stats], ["/flows", t.flows], ["/whales", t.whales], ["/supply", t.supply], ["/unlocks", t.unlocks], ["/largest", t.largest], ["/locked", t.locked]] as [string, string][] },
     { label: t.groupTokens, items: [["/assets", t.assets], ["/pools", t.pools], ["/trades", t.trades]] as [string, string][] },
-    { label: t.groupTools, items: [["/wallets", t.wallets], ["/watchlist", t.watchlist], ["/api-docs", t.apiDocs]] as [string, string][] },
+    { label: t.groupTools, items: [["/wallets", t.wallets], ["/richlist", t.richlist], ["/watchlist", t.watchlist], ["/api-docs", t.apiDocs], ["/status", t.status]] as [string, string][] },
   ];
-  const quick: [string, string][] = [["/", t.home], ["/blocks", t.blocks], ["/txs", t.transactions], ["/stats", t.stats], ["/unlocks", t.unlocks]];
+  const quick: [string, string][] = [["/", t.home], ["/whales", t.whales], ["/flows", t.flows], ["/txs", t.transactions], ["/unlocks", t.unlocks]];
   const themeLabel = { auto: t.themeAuto, light: t.themeLight, dark: t.themeDark }[theme];
   const themeIcon = {
     auto: <path d="M12 3a9 9 0 1 0 0 18V3Z" fill="currentColor" stroke="none" />,
@@ -80,9 +80,9 @@ export function Footer({ s }: { s: Settings }) {
   const { t } = s;
   const cols: [string, [string, string][]][] = [
     [t.footerExplore, [["/blocks", t.blocks], ["/txs", t.transactions], ["/operations", t.operations], ["/assets", t.assets]]],
-    [t.footerStats, [["/stats", t.stats], ["/unlocks", t.unlocks], ["/largest", t.largest], ["/locked", t.locked]]],
+    [t.footerStats, [["/stats", t.stats], ["/flows", t.flows], ["/whales", t.whales], ["/supply", t.supply], ["/unlocks", t.unlocks]]],
     [t.footerDevelopers, [["/api-docs", t.apiDocs], ["https://github.com/mohamedgamal2248/ai-site-builder", t.sourceCode], ["https://api.mainnet.minepi.com", t.dataSource]]],
-    [t.groupTools, [["/wallets", t.wallets], ["/watchlist", t.watchlist]]],
+    [t.groupTools, [["/wallets", t.wallets], ["/richlist", t.richlist], ["/watchlist", t.watchlist], ["/status", t.status]]],
   ];
   return (
     <footer className="site-footer">

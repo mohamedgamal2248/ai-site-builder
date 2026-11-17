@@ -6,6 +6,7 @@ import type { AccountSummary } from "@/lib/account-summary";
 import { formatAmount, shortId, timeAgo } from "@/lib/format";
 import type { Dict } from "@/lib/i18n";
 import { readWatchlist, writeWatchlist, type WatchEntry } from "@/lib/watchlist";
+import { syncPush } from "@/lib/push-client";
 
 export function WatchlistView({ t, lang, native, net }: { t: Dict; lang: "ar" | "en"; native: string; net: string }) {
   const [list, setList] = useState<Record<string, WatchEntry> | null>(null);
@@ -57,6 +58,7 @@ export function WatchlistView({ t, lang, native, net }: { t: Dict; lang: "ar" | 
                   delete l[id];
                   writeWatchlist(l);
                   setList({ ...l });
+                  syncPush(net).catch(() => {});
                 }}
               >
                 {t.remove}

@@ -87,7 +87,7 @@ export function getUnlocks(net: Network, months = 24): Promise<UnlockSummary> {
         select to_char(date_trunc('month', unlock_at at time zone 'utc'), 'YYYY-MM') as month,
                sum(amount)::text as amount, count(*)::int as count
         from lockups
-        where net = ${net} and claimed_at is null and unlock_at > now()
+        where net = ${net} and unlock_at > now()
           and unlock_at < date_trunc('month', now()) + make_interval(months => ${months})
         group by 1 order by 1`,
       sql<{ locked: string; locked_n: number; free: string; free_n: number }[]>`
@@ -96,7 +96,7 @@ export function getUnlocks(net: Network, months = 24): Promise<UnlockSummary> {
                coalesce(sum(amount) filter (where unlock_at <= now()), 0)::text as free,
                (count(*) filter (where unlock_at <= now()))::int as free_n
         from lockups
-        where net = ${net} and claimed_at is null`,
+        where net = ${net}`,
     ]);
     const t = totals[0];
     return {
@@ -146,7 +146,7 @@ export function getTopLocked(net: Network, limit = 25) {
       select claimant, sum(amount)::text as amount, count(*)::int as count,
              to_char(min(unlock_at) at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as next_unlock
       from lockups
-      where net = ${net} and claimed_at is null and unlock_at > now() and claimant is not null
+      where net = ${net} and unlock_at > now() and claimant is not null
       group by claimant
       order by sum(amount) desc
       limit ${limit}`;
@@ -177,4 +177,109 @@ export function bucketDaily(rows: DailyRow[], size: "day" | "week" | "month"): D
     }
   }
   return [...out.values()];
+}
+
+/* ---------- Known-wallet flows and history ---------- */
+
+export interface FlowRow {
+  address: string;
+  day: string;
+  inflow: string;
+  outflow: string;
+  n_in: number;
+  n_out: number;
+}
+
+export function getFlows(net: Network, addresses: string[], days = 30) {
+  return cached(`flows:${net}:${days}:${addresses.join(",")}`, 60_000, async () => {
+    const sql = getDb()!;
+    return sql<FlowRow[]>`
+      select address, to_char(day, 'YYYY-MM-DD') as day, inflow::text, outflow::text, n_in, n_out
+      from wallet_flows_daily
+      where net = ${net} and address = any(${addresses}) and day >= (now() at time zone 'utc')::date - ${days - 1}::int
+      order by day`;
+  });
+}
+
+export interface BalanceRow {
+  address: string;
+  day: string;
+  balance: string;
+}
+
+export function getWalletHistory(net: Network, days = 90) {
+  return cached(`wbal:${net}:${days}`, 5 * 60_000, async () => {
+    const sql = getDb()!;
+    return sql<BalanceRow[]>`
+      select address, to_char(day, 'YYYY-MM-DD') as day, balance::text
+      from wallet_balances
+      where net = ${net} and day >= (now() at time zone 'utc')::date - ${days - 1}::int
+      order by day`;
+  });
+}
+
+export interface HolderRow {
+  account: string;
+  balance: string;
+  updated_at: string;
+}
+
+export function getHolders(net: Network, limit = 100) {
+  return cached(`holders:${net}:${limit}`, 2 * 60_000, async () => {
+    const sql = getDb()!;
+    const [rows, total] = await Promise.all([
+      sql<HolderRow[]>`
+        select account, balance::text, to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
+        from holders where net = ${net} and balance is not null order by balance desc limit ${limit}`,
+      sql<{ n: number }[]>`select count(*)::int as n from holders where net = ${net}`,
+    ]);
+    return { rows, tracked: total[0]?.n ?? 0 };
+  });
+}
+
+export interface CalendarDay {
+  day: string;
+  amount: string;
+  count: number;
+}
+
+/** Pi unlocking each day for the next `days` days. */
+export function getUnlockCalendar(net: Network, days = 30) {
+  return cached(`ucal:${net}:${days}`, 5 * 60_000, async () => {
+    const sql = getDb()!;
+    return sql<CalendarDay[]>`
+      select to_char(unlock_at at time zone 'utc', 'YYYY-MM-DD') as day, sum(amount)::text as amount, count(*)::int as count
+      from lockups
+      where net = ${net} and unlock_at > now() and unlock_at < now() + make_interval(days => ${days})
+      group by 1 order by 1`;
+  });
+}
+
+export interface LargeFilter {
+  hours: number;
+  min: number;
+  limit?: number;
+}
+
+/** Latest large transfers (newest first), for the whale feed. */
+export function getWhaleFeed(net: Network, f: LargeFilter) {
+  return cached(`whales:${net}:${f.hours}:${f.min}:${f.limit ?? 100}`, 20_000, async () => {
+    const sql = getDb()!;
+    return sql<LargeRow[]>`
+      select op_id, tx_hash, to_char(ledger_time at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as ledger_time,
+             from_acc, to_acc, amount::text, kind
+      from large_payments
+      where net = ${net} and ledger_time >= now() - make_interval(hours => ${f.hours}) and amount >= ${f.min}
+      order by ledger_time desc
+      limit ${f.limit ?? 100}`;
+  });
+}
+
+export function getLockedTotal(net: Network) {
+  return cached(`locked:${net}`, 5 * 60_000, async () => {
+    const sql = getDb()!;
+    const [r] = await sql<{ amount: string; n: number }[]>`
+      select coalesce(sum(amount), 0)::text as amount, count(*)::int as n from lockups where net = ${net} and unlock_at > now()`;
+    return r;
+  });
 }

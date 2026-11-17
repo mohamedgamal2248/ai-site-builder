@@ -5,7 +5,8 @@ import { LoadMeter, Sparkline } from "@/components/Sparkline";
 import { compact, formatAmount, stroopsToPi, timeAgo } from "@/lib/format";
 import { horizon } from "@/lib/horizon";
 import { getLatest } from "@/lib/latest";
-import { getMarket, getPiPrice } from "@/lib/price";
+import { getCandles, getMarket, getPiPrice } from "@/lib/price";
+import { PriceCard } from "@/components/PriceCard";
 import { getSettings, type Settings } from "@/lib/settings";
 import { getDaily, statsEnabled } from "@/lib/stats";
 
@@ -28,6 +29,11 @@ export default async function Home() {
       <Suspense fallback={null}>
         <Today s={s} />
       </Suspense>
+      {s.net === "mainnet" ? (
+        <Suspense fallback={<div className="card skeleton-card" style={{ minHeight: 280 }} aria-hidden="true" />}>
+          <Price s={s} />
+        </Suspense>
+      ) : null}
       <Suspense fallback={<div className="grid-feed" aria-hidden="true"><div className="card skeleton-card" /><div className="card skeleton-card" /></div>}>
         <Feed s={s} />
       </Suspense>
@@ -183,6 +189,19 @@ async function Today({ s }: { s: Settings }) {
         </section>
       ) : null}
     </>
+  );
+}
+
+async function Price({ s }: { s: Settings }) {
+  const points = await getCandles("7d");
+  if (points.length < 2) return null;
+  const { t, lang } = s;
+  return (
+    <PriceCard
+      initial={points}
+      locale={lang === "ar" ? "ar-EG-u-nu-latn" : "en"}
+      labels={{ title: t.priceChart, source: t.priceSource, ranges: { "24h": t.range24h, "7d": t.range7d, "30d": t.range30d } }}
+    />
   );
 }
 

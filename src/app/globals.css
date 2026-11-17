@@ -485,3 +485,36 @@ pre.code { background: var(--surface-2); border: 1px solid var(--border); border
 .warn { padding: 12px 14px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--gold) 60%, transparent); background: color-mix(in srgb, var(--gold) 12%, transparent); font-size: 14px; margin-bottom: 12px; }
 .known-banner { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13.5px; }
 .known-banner .wallet-badge { width: 28px; height: 28px; }
+
+/* ---------- Diverging bars and line chart ---------- */
+:root { --chart-neg: #c8650a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --chart-neg: #d07a2e; } }
+:root[data-theme="dark"] { --chart-neg: #d07a2e; }
+.chart .bar.neg { fill: var(--chart-neg); }
+.chart .grid.zero { stroke: var(--muted); opacity: 0.5; }
+.line-chart { position: relative; padding-bottom: 22px; }
+.line-chart svg { display: block; }
+.line-chart .line { fill: none; stroke: var(--chart); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.line-chart .area { fill: var(--chart); opacity: 0.1; }
+.line-chart .crosshair { stroke: var(--muted); stroke-width: 1; }
+.line-axis { position: absolute; top: 0; left: 0; width: 48px; height: 200px; pointer-events: none; }
+.line-axis span { position: absolute; left: 0; font-size: 11px; color: var(--muted); }
+.line-x { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding-left: 52px; }
+.dot-marker { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--chart); box-shadow: 0 0 0 2px var(--surface); pointer-events: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-inline-end: 5px; vertical-align: -1px; }
+.legend .in { background: var(--chart-neg); }
+.legend .out { background: var(--chart); }
+
+/* ---------- Supply ---------- */
+.supply-bar { display: flex; height: 22px; border-radius: 8px; overflow: hidden; gap: 2px; margin-bottom: 12px; background: var(--surface); }
+.supply-bar span { display: block; height: 100%; }
+.s-found { background: var(--chart); }
+.s-lock { background: var(--chart-neg); }
+.s-circ { background: var(--chart-3); }
+:root { --chart-3: #1f8a5b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --chart-3: #2fa36f; } }
+:root[data-theme="dark"] { --chart-3: #2fa36f; }
+.s-rest { background: var(--border); }
+.legend-row { display: inline-flex; align-items: center; gap: 6px; }
+.legend-row i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }

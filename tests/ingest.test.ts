@@ -34,6 +34,8 @@ describe.skipIf(!url)("applyPage (Postgres)", () => {
     await sql`delete from large_payments where net = ${net}`;
     await sql`delete from lockups where net = ${net}`;
     await sql`delete from sync_state where net = ${net}`;
+    await sql`delete from wallet_flows_daily where net = ${net}`;
+    await sql`delete from holders where net = ${net}`;
   });
   afterAll(async () => {
     await sql.end();
@@ -66,7 +68,7 @@ describe.skipIf(!url)("applyPage (Postgres)", () => {
     await applyPage(
       sql, net, "operations",
       [
-        { id: "op1", paging_token: "op1", type: "payment", asset_type: "native", amount: "50000.0000000", from: "GA", to: "GB", created_at: "2026-11-17T11:00:00Z", transaction_hash: "h1", transaction_successful: true, source_account: "GA" },
+        { id: "op1", paging_token: "op1", type: "payment", asset_type: "native", amount: "50000.0000000", from: "GALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PXEQU", to: "GASWBDATCXXIUGHR7DWSFAAONZB2L5NFMBTDCYQQ2TQLRQNCTKJ2AODM", created_at: "2026-11-17T11:00:00Z", transaction_hash: "h1", transaction_successful: true, source_account: "GA" },
         { id: "op2", paging_token: "op2", type: "payment", asset_type: "native", amount: "1.5000000", from: "GA", to: "GB", created_at: "2026-11-17T11:00:01Z", transaction_hash: "h2", transaction_successful: true, source_account: "GA" },
         { id: "op3", paging_token: "op3", type: "create_account", starting_balance: "2.0000000", funder: "GA", account: "GC", created_at: "2026-11-17T11:00:02Z", transaction_hash: "h3", transaction_successful: true, source_account: "GA" },
         { id: "op4", paging_token: "op4", type: "claim_claimable_balance", balance_id: "bal1", claimant: "GOWNER", created_at: "2026-11-17T11:00:03Z", transaction_hash: "h4", transaction_successful: true, source_account: "GOWNER" },
@@ -77,7 +79,15 @@ describe.skipIf(!url)("applyPage (Postgres)", () => {
     expect(d).toEqual({ payments: 2, v: "50003.5000000", new_accounts: 1, claims: 1 });
     const large = await sql`select op_id, amount::text from large_payments where net = ${net}`;
     expect(large).toEqual([{ op_id: "op1", amount: "50000.0000000" }]);
-    const [l] = await sql`select claimant, claimed_at is not null as claimed, to_char(unlock_at at time zone 'utc', 'YYYY-MM-DD') as unlock from lockups where net = ${net} and balance_id = 'bal1'`;
-    expect(l).toEqual({ claimant: "GOWNER", claimed: true, unlock: "2027-03-15" });
+    // A claimed lockup is removed; the table only holds what is still locked.
+    const left = await sql`select 1 from lockups where net = ${net} and balance_id = 'bal1'`;
+    expect(left.length).toBe(0);
+    const holders = await sql`select account from holders where net = ${net} order by account`;
+    expect(holders.map((h) => h.account)).toEqual(["GALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PXEQU", "GASWBDATCXXIUGHR7DWSFAAONZB2L5NFMBTDCYQQ2TQLRQNCTKJ2AODM"]);
+    const flows = await sql`select address, inflow::text, outflow::text from wallet_flows_daily where net = ${net} order by address`;
+    expect(flows).toEqual([
+      { address: "GALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PXEQU", inflow: "0.0000000", outflow: "50000.0000000" },
+      { address: "GASWBDATCXXIUGHR7DWSFAAONZB2L5NFMBTDCYQQ2TQLRQNCTKJ2AODM", inflow: "50000.0000000", outflow: "0.0000000" },
+    ]);
   });
 });

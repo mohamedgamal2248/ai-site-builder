@@ -35,7 +35,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
   const id = raw.toUpperCase();
   if (!/^G[A-Z2-7]{55}$/.test(id)) notFound();
   const sp = await searchParams;
-  const tab = sp.tab === "txs" ? "txs" : sp.tab === "locks" ? "locks" : "ops";
+  const tab = sp.tab === "txs" ? "txs" : sp.tab === "locks" ? "locks" : sp.tab === "analytics" ? "analytics" : "ops";
   const pp = readPageParams(sp);
 
   const accountP = horizon.account(net, id).catch((e) => {
@@ -46,7 +46,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
     accountP,
     horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
     horizon.accountClaimable(net, id).catch(() => ({ records: [] as ClaimableBalance[] })),
-    tab === "locks"
+    tab === "locks" || tab === "analytics"
       ? Promise.resolve(null)
       : tab === "txs"
       ? paged((q) => horizon.accountTransactions(net, id, q), pp, 20).then((p) => ({ kind: "txs" as const, ...p }))
@@ -62,7 +62,9 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
     ["ops", t.operations, `/account/${id}`],
     ["txs", t.transactions, `/account/${id}?tab=txs`],
     ["locks", `${t.tabLocks} (${locked.records.length})`, `/account/${id}?tab=locks`],
+    ["analytics", t.analytics, `/account/${id}?tab=analytics`],
   ];
+  const analytics = tab === "analytics" ? await accountAnalytics(net, id) : null;
   const nativeBal = account?.balances.find((b) => b.asset_type === "native");
   const reserved = account && ledger ? reservedPi(account, ledger.base_reserve_in_stroops) : 0;
   const lockedTotal = locked.records
@@ -183,7 +185,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
               <Link key={k} href={href} className={tab === k ? "active" : undefined}>{label}</Link>
             ))}
           </nav>
-          {tab !== "locks" ? (
+          {tab === "ops" || tab === "txs" ? (
             <a className="btn ghost small" href={`/api/export/${id}?type=${tab}`} download>
               ⤓ {t.exportCsv}
             </a>
@@ -216,6 +218,27 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
             ]}
           />
         </>
+      ) : analytics ? (
+        <>
+          <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>{t.analyticsNote.replace("{n}", String(analytics.count))}</p>
+          <div className="stats">
+            <div className="stat"><div className="label">{t.received}</div><div className="value"><Amount value={analytics.received.toFixed(2)} asset={native} /></div></div>
+            <div className="stat"><div className="label">{t.sent}</div><div className="value"><Amount value={analytics.sent.toFixed(2)} asset={native} /></div></div>
+            <div className="stat span-mobile"><div className="label">{t.payments_n}</div><div className="value">{analytics.count}</div></div>
+          </div>
+          <h3 style={{ fontSize: 15, margin: "8px 0" }}>{t.counterparties}</h3>
+          <DataTable<{ account: string; received: number; sent: number; n: number }>
+            rows={analytics.top}
+            rowKey={(r) => r.account}
+            empty={t.noRecords}
+            columns={[
+              { label: t.account, cell: (r) => <AccountLink id={r.account} /> },
+              { label: t.received, cell: (r) => <Amount value={r.received.toFixed(2)} />, className: "num" },
+              { label: t.sent, cell: (r) => <Amount value={r.sent.toFixed(2)} />, className: "num" },
+              { label: t.payments_n, cell: (r) => r.n, className: "num" },
+            ]}
+          />
+        </>
       ) : activity ? (
         <>
           {activity.kind === "txs" ? <TxTable rows={activity.records} s={s} /> : <OpTable rows={activity.records} s={s} />}
@@ -225,4 +248,43 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
       </Card>
     </>
   );
+}
+
+/** Totals and top counterparties from the account's latest 200 native payments. */
+async function accountAnalytics(net: "mainnet" | "testnet", id: string) {
+  const page = await horizon.accountPayments(net, id, 200).catch(() => ({ records: [] as never[] }));
+  let received = 0;
+  let sent = 0;
+  let count = 0;
+  const by = new Map<string, { account: string; received: number; sent: number; n: number }>();
+  for (const o of page.records as { type: string; asset_type?: string; from?: string; to?: string; funder?: string; account?: string; amount?: string; starting_balance?: string; transaction_successful?: boolean }[]) {
+    if (o.transaction_successful === false) continue;
+    let from: string | undefined;
+    let to: string | undefined;
+    let amount = 0;
+    if (o.type === "payment" && o.asset_type === "native") {
+      from = o.from;
+      to = o.to;
+      amount = Number(o.amount);
+    } else if (o.type === "create_account") {
+      from = o.funder;
+      to = o.account;
+      amount = Number(o.starting_balance);
+    } else continue;
+    count++;
+    const other = to === id ? from : to;
+    if (!other) continue;
+    const c = by.get(other) ?? { account: other, received: 0, sent: 0, n: 0 };
+    if (to === id) {
+      received += amount;
+      c.received += amount;
+    } else {
+      sent += amount;
+      c.sent += amount;
+    }
+    c.n++;
+    by.set(other, c);
+  }
+  const top = [...by.values()].sort((a, b) => b.received + b.sent - (a.received + a.sent)).slice(0, 10);
+  return { received, sent, count, top };
 }

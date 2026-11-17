@@ -33,7 +33,8 @@ try {
     await sql.unsafe(schema);
     console.log("schema applied");
   }
-  const results = await ingestAll(sql, nets, budget);
+  const { results, maintenance } = await ingestAll(sql, nets, budget);
+  console.log("maintenance", maintenance);
   for (const r of results) {
     console.log(`${r.net}/${r.stream}: ${r.records} records in ${r.pages} pages, ${r.caughtUp ? "caught up" : "more to do"}, cursor ${r.cursor || "(start)"}`);
   }

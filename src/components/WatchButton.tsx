@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { readWatchlist, writeWatchlist } from "@/lib/watchlist";
+import { syncPush } from "@/lib/push-client";
 
 /** ☆ Watch / ★ Watching toggle. Visiting the account marks its activity as seen. */
 export function WatchButton({ id, labels }: { id: string; labels: { watch: string; unwatch: string } }) {
@@ -27,6 +28,7 @@ export function WatchButton({ id, labels }: { id: string; labels: { watch: strin
         else list[id] = { added: Date.now(), seenAt: Date.now() };
         writeWatchlist(list);
         setOn(!!list[id]);
+        syncPush(document.cookie.includes("net=testnet") ? "testnet" : "mainnet").catch(() => {});
       }}
     >
       {on ? labels.unwatch : labels.watch}

@@ -290,6 +290,8 @@ export const horizon = {
     list<Operation>(net, `/accounts/${id}/operations`, { include_failed: "true", ...q }, CACHE.short),
   accountTransactions: (net: Network, id: string, q: ListQuery = {}) =>
     list<Transaction>(net, `/accounts/${id}/transactions`, { include_failed: "true", ...q }, CACHE.short),
+  accountPayments: (net: Network, id: string, limit = 200) =>
+    list<Operation>(net, `/accounts/${id}/payments`, { limit }, CACHE.short),
   accountClaimable: (net: Network, id: string, q: ListQuery = {}) =>
     list<ClaimableBalance>(net, "/claimable_balances", { claimant: id, limit: 200, ...q }, CACHE.short),
 
