@@ -117,7 +117,7 @@ async function HeroIndex({ s }: { s: Settings }) {
       <div>
         <div className="k">{x.indexShort}</div>
         <div className="v sub-v"><bdi dir="ltr">{idx.score === null ? "—" : idx.score.toFixed(0)}</bdi><small>/100</small></div>
-        <div className="s">{idx.band ? x.bands[idx.band] : x.notEnough}</div>
+        <div className="s">{idx.band ? x.bands[idx.band] : x.collectingShort}</div>
       </div>
     </Link>
   );
