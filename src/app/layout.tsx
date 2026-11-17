@@ -1,15 +1,36 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
+import { Footer, Header } from "@/components/Header";
+import { getSettings } from "@/lib/settings";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Wasl — وصل",
-  description: "Connect your Salla, Zid or WooCommerce store to AI shopping agents. Customers always pay on your own checkout.",
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getSettings();
+  return {
+    title: { default: `${t.siteName} · ${t.tagline}`, template: `%s · ${t.siteName}` },
+    description: t.disclaimer,
+    icons: { icon: "/icon.svg" },
+  };
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f4fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#120f1d" },
+  ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const s = await getSettings();
   return (
-    <html lang="ar" dir="rtl">
-      <body>{children}</body>
+    <html lang={s.lang} dir={s.lang === "ar" ? "rtl" : "ltr"}>
+      <body className={s.net === "testnet" ? "is-testnet" : undefined}>
+        <Header s={s} />
+        <main className="container main">{children}</main>
+        <Footer s={s} />
+      </body>
     </html>
   );
 }
