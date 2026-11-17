@@ -1,4 +1,4 @@
-import type { ListQuery, Page } from "./horizon";
+import { HorizonError, type ListQuery, type Page } from "./horizon";
 
 export interface PageParams {
   cursor?: string;
@@ -24,8 +24,17 @@ export async function paged<T extends { paging_token: string }>(
   p: PageParams,
   limit = 20,
 ) {
-  const asc = p.dir === "asc" && !!p.cursor;
-  const page = await fetcher({ cursor: p.cursor, order: asc ? "asc" : "desc", limit });
+  let asc = p.dir === "asc" && !!p.cursor;
+  let page: Page<T>;
+  try {
+    page = await fetcher({ cursor: p.cursor, order: asc ? "asc" : "desc", limit });
+  } catch (e) {
+    // A cursor Horizon rejects (edited by hand, or from another network) falls back to the newest page.
+    if (!(p.cursor && e instanceof HorizonError && e.status === 400)) throw e;
+    p = {};
+    asc = false;
+    page = await fetcher({ order: "desc", limit });
+  }
   const records = asc ? [...page.records].reverse() : page.records;
   const atNewest = asc && records.length < limit;
   return {

@@ -26,7 +26,7 @@ export default async function BlockPage({ params, searchParams }: { params: Para
 
   const [ledger, txs] = await Promise.all([
     found(horizon.ledger(net, seq)),
-    paged((q) => horizon.ledgerTransactions(net, seq, q), readPageParams(await searchParams), 50),
+    found(paged((q) => horizon.ledgerTransactions(net, seq, q), readPageParams(await searchParams), 50)),
   ]);
 
   return (

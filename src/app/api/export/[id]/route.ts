@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { horizon, type Network, type Operation, type Transaction } from "@/lib/horizon";
 import { summarize } from "@/lib/operations";
+import { toActivity } from "@/lib/latest";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const page = await horizon.accountOperations(net, id, { limit: 200, cursor });
         for (const o of page.records as Operation[]) {
           const from = o.from ?? o.funder ?? o.source_account;
-          const to = o.to ?? o.account ?? o.into ?? "";
+          const to = o.to ?? o.account ?? o.into ?? toActivity(o).to ?? "";
           const amount = o.amount ?? o.starting_balance ?? "";
           const rawAsset = (o.asset_code as string | undefined) ?? (o.asset as string | undefined);
           const asset = o.asset_type === "native" || o.type === "create_account" || rawAsset === "native" ? "Pi" : rawAsset?.split(":")[0] ?? "";
