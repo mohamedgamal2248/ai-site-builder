@@ -39,7 +39,7 @@ async function get<T>(net: Network, path: string, revalidate: number): Promise<T
   const url = `${HOSTS[net]}${path}`;
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
-    next: { revalidate },
+    ...(revalidate === 0 ? { cache: "no-store" as const } : { next: { revalidate } }),
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) {
@@ -269,6 +269,9 @@ export const horizon = {
   feeStats: (net: Network) => get<FeeStats>(net, "/fee_stats", CACHE.short),
 
   ledgers: (net: Network, q: ListQuery = {}) => list<Ledger>(net, "/ledgers", q, CACHE.live),
+  /** Uncached reads for the live feed; the CDN in front of /api/latest does the sharing. */
+  ledgersFresh: (net: Network, limit: number) => list<Ledger>(net, "/ledgers", { limit }, 0),
+  operationsFresh: (net: Network, limit: number) => list<Operation>(net, "/operations", { include_failed: "true", limit }, 0),
   ledger: (net: Network, seq: number) => get<Ledger>(net, `/ledgers/${seq}`, CACHE.immutable),
   ledgerTransactions: (net: Network, seq: number, q: ListQuery = {}) =>
     list<Transaction>(net, `/ledgers/${seq}/transactions`, { include_failed: "true", order: "asc", limit: 50, ...q }, CACHE.immutable),

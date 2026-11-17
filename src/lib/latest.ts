@@ -73,10 +73,10 @@ export function toActivity(op: Operation, native = "Pi"): Activity {
 }
 
 /** Snapshot for the home page and the /api/latest poller: 50 ledgers (sparklines), 40 operations. */
-export async function getLatest(net: Network, native = net === "testnet" ? "Test-Pi" : "Pi"): Promise<Latest> {
+export async function getLatest(net: Network, native = net === "testnet" ? "Test-Pi" : "Pi", fresh = false): Promise<Latest> {
   const [ledgers, ops] = await Promise.all([
-    horizon.ledgers(net, { limit: 51 }),
-    horizon.operations(net, { limit: 40 }),
+    fresh ? horizon.ledgersFresh(net, 51) : horizon.ledgers(net, { limit: 51 }),
+    fresh ? horizon.operationsFresh(net, 40) : horizon.operations(net, { limit: 40 }),
   ]);
   const recs = ledgers.records;
   const spark: SparkPoint[] = recs.slice(0, 50).map((l, i) => {
