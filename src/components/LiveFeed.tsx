@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { subscribeHorizon } from "@/lib/stream";
 import { formatAmount, shortId, timeAgo } from "@/lib/format";
 import type { Dict } from "@/lib/i18n";
-import { buildLatest, type ActivityKind, type Latest } from "@/lib/activity";
+import { buildLatest, withLedger, withOperations, type ActivityKind, type Latest } from "@/lib/activity";
 import type { Ledger, Operation } from "@/lib/horizon";
 import { HoverLink as Link } from "./HoverLink";
 import { knownWallet } from "@/data/wallets";
 import { WalletBadge } from "./WalletBadge";
 
 const POLL_MS = 5000;
+export const latestKey = (net: string) => ["latest", net] as const;
 const FILTERS: ("all" | ActivityKind)[] = ["all", "payment", "lock", "claim", "create"];
 
 function Acc({ id }: { id?: string }) {
@@ -55,39 +58,63 @@ async function poll(horizon: string, net: Latest["net"]): Promise<Latest> {
 
 export function LiveFeed({ initial, t, lang, horizon, tabs }: { initial: Latest; t: Dict; lang: "ar" | "en"; horizon: string; tabs: { blocks: string; activity: string } }) {
   const [view, setView] = useState<"activity" | "blocks">("activity");
-  const [data, setData] = useState(initial);
-  const [online, setOnline] = useState(true);
+  const qc = useQueryClient();
+  const native = initial.net === "testnet" ? "Test-Pi" : "Pi";
+  const [stream, setStream] = useState<"connecting" | "open" | "down">("connecting");
+  /*
+   * The page itself is a cached copy, so the feed lives in the browser's query cache:
+   * fetched fresh on arrival, kept across page changes (coming back is instant), and fed
+   * by Horizon's live stream. If the stream is down it falls back to polling.
+   */
+  const { data: cachedData, isError } = useQuery({
+    queryKey: latestKey(initial.net),
+    queryFn: () => poll(horizon, initial.net),
+    initialData: initial,
+    initialDataUpdatedAt: 0,
+    staleTime: 10_000,
+    refetchInterval: stream === "down" ? POLL_MS : false,
+  });
+  const data = cachedData ?? initial;
+  const online = !isError;
   const [now, setNow] = useState(() => Date.now());
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
   const seen = useRef(new Set(initial.ledgers.map((l) => l.sequence)));
   const [fresh, setFresh] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    let stop = false;
-    let timer: ReturnType<typeof setTimeout>;
-    const tick = async () => {
-      if (document.visibilityState === "visible") {
-        try {
-          const next = await poll(horizon, initial.net);
-          if (stop) return;
-          const added = new Set(next.ledgers.filter((l) => !seen.current.has(l.sequence)).map((l) => l.sequence));
-          next.ledgers.forEach((l) => seen.current.add(l.sequence));
-          setFresh(added);
-          setData(next);
-          setOnline(true);
-        } catch {
-          if (!stop) setOnline(false);
-        }
-      }
-      setNow(Date.now());
-      if (!stop) timer = setTimeout(tick, POLL_MS);
-    };
-    timer = setTimeout(tick, POLL_MS);
+    const added = data.ledgers.filter((l) => !seen.current.has(l.sequence)).map((l) => l.sequence);
+    data.ledgers.forEach((l) => seen.current.add(l.sequence));
+    if (added.length) setFresh(new Set(added));
+  }, [data.ledgers]);
+
+  useEffect(() => {
+    const key = latestKey(initial.net);
+    let pending: Parameters<typeof withOperations>[1] = [];
+    let flush: ReturnType<typeof setTimeout> | undefined;
+    const offL = subscribeHorizon(
+      horizon,
+      "ledgers",
+      (l) => qc.setQueryData<Latest>(key, (old) => (old ? withLedger(old, l) : old)),
+      setStream,
+    );
+    // Operations arrive in bursts at each ledger close: apply them together.
+    const offO = subscribeHorizon(horizon, "operations", (o) => {
+      pending.push(o);
+      flush ??= setTimeout(() => {
+        const batch = pending;
+        pending = [];
+        flush = undefined;
+        qc.setQueryData<Latest>(key, (old) => (old ? withOperations(old, batch, native) : old));
+      }, 250);
+    });
+    const tick = setInterval(() => setNow(Date.now()), 5000);
     return () => {
-      stop = true;
-      clearTimeout(timer);
+      offL();
+      offO();
+      clearInterval(tick);
+      if (flush) clearTimeout(flush);
     };
-  }, [initial.net, horizon]);
+  }, [qc, horizon, initial.net, native]);
 
   const status = <span className={`live-dot${online ? "" : " off"}`}>{online ? t.live : t.paused}</span>;
   const kindLabel: Record<ActivityKind, string> = {

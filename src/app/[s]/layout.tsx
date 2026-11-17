@@ -5,6 +5,7 @@ import { BASE_SEGMENTS, getSettings } from "@/lib/settings";
 import { SwRegister } from "@/components/SwRegister";
 import { BottomNav } from "@/components/BottomNav";
 import { NavProgress } from "@/components/NavProgress";
+import { QueryProvider } from "@/components/QueryProvider";
 import { insightDicts } from "@/lib/i18n-insights";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
 
@@ -50,8 +51,10 @@ export default async function RootLayout({ children, params }: { children: React
       </head>
       <body className={s.net === "testnet" ? "is-testnet" : undefined}>
         <NavProgress />
-        <Header s={s} />
-        <main className="container main">{children}</main>
+        <QueryProvider>
+          <Header s={s} />
+          <main className="container main">{children}</main>
+        </QueryProvider>
         <Footer s={s} />
         <BottomNav labels={{ home: s.t.home, index: insightDicts[s.lang].indexShort, search: s.t.search, alerts: insightDicts[s.lang].alerts, menu: s.t.menu }} />
         <SwRegister />

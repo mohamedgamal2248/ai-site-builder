@@ -729,3 +729,8 @@ body { font-variant-numeric: tabular-nums; letter-spacing: 0; -webkit-font-smoot
 @media (prefers-reduced-motion: reduce) { .nav-progress.busy { animation: none; transform: scaleX(.6); } }
 /* Phones: the tab bar and drawer carry every link, so the footer keeps only the brand and note. */
 @media (max-width: 899px) { .footer-cols > div:not(.footer-brand) { display: none; } .footer-cols { grid-template-columns: 1fr; padding-bottom: 4px; } }
+
+/* ---------- Rendering cost: skip off-screen rows until they scroll near (no JS virtualization) ---------- */
+.rows li, .news li { content-visibility: auto; contain-intrinsic-size: auto 56px; }
+@media (max-width: 720px) { table.data tbody tr { content-visibility: auto; contain-intrinsic-size: auto 84px; } }
+@media (prefers-reduced-motion: no-preference) { .tick { display: inline-block; animation: slide-in .4s var(--ease-out); } }

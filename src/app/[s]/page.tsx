@@ -9,6 +9,7 @@ import { getLatest } from "@/lib/latest";
 import { getCandles, getMarket, getPiPrice } from "@/lib/price";
 import { PriceCard } from "@/components/PriceCard";
 import { PriceTicker } from "@/components/PriceTicker";
+import { LiveBlock } from "@/components/LiveBlock";
 import { StatsMore } from "@/components/StatsMore";
 import { getSettings, type Settings } from "@/lib/settings";
 import { getDaily, statsEnabled } from "@/lib/stats";
@@ -141,12 +142,8 @@ async function NetworkStats({ s }: { s: Settings }) {
   const stats: { label: string; value: ReactNode; hint?: ReactNode; extra?: ReactNode }[] = [
     {
       label: t.latestBlock,
-      value: (
-        <Link href={`/blocks/${ledger.sequence}`}>
-          <bdi dir="ltr">#{ledger.sequence.toLocaleString("en")}</bdi>
-        </Link>
-      ),
-      hint: <Ago iso={ledger.closed_at} lang={lang} />,
+      value: null,
+      extra: <LiveBlock net={net} seq={ledger.sequence} closedAt={ledger.closed_at} lang={lang} />,
     },
     {
       label: t.txPerBlock,

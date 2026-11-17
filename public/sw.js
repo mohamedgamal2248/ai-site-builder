@@ -1,6 +1,8 @@
 /* Blockchain Pi service worker: offline shell, cached static assets, push notifications. */
 const STATIC = "bp-static-v1";
-const PAGES = "bp-pages-v1";
+const PAGES = "bp-pages-v3";
+const FRESH_MS = 5 * 60_000; // serve a saved page instantly if it is younger than this
+const MAX_PAGES = 40;
 const OFFLINE = "/offline";
 
 self.addEventListener("install", (e) => {
@@ -31,11 +33,47 @@ self.addEventListener("fetch", (e) => {
     );
     return;
   }
-  // Pages: always from the network (data is live); offline page when there is no connection.
+  // Pages: a copy saved in the last few minutes opens instantly while a fresh one is fetched
+  // in the background (live parts of the page update themselves). Older or missing copies wait
+  // for the network; with no connection the saved copy, or the offline page, is shown.
+  // Changing language or network: saved pages are in the old one, so drop them.
+  if (req.mode === "navigate" && url.pathname === "/settings") {
+    e.respondWith(caches.delete(PAGES).then(() => fetch(req)));
+    return;
+  }
   if (req.mode === "navigate") {
-    e.respondWith(fetch(req).catch(() => caches.match(OFFLINE)));
+    e.respondWith(
+      caches.open(PAGES).then(async (c) => {
+        const hit = await c.match(req);
+        const age = hit ? Date.now() - Number(hit.headers.get("x-sw-saved") || 0) : Infinity;
+        // "no-cache" = always confirm with the server (the CDN answers quickly), so a page in the
+        // old language or network can never come back from the browser's own cache.
+        const network = fetch(req, { cache: "no-cache", referrer: req.referrer || "about:client" })
+          .then(async (res) => {
+            if (res.ok && res.type === "basic") {
+              const body = await res.clone().blob();
+              const headers = new Headers(res.headers);
+              headers.set("x-sw-saved", String(Date.now()));
+              await c.put(req, new Response(body, { status: res.status, statusText: res.statusText, headers }));
+              trim(c);
+            }
+            return res;
+          })
+          .catch(() => hit || caches.match(OFFLINE));
+        if (hit && age < FRESH_MS) {
+          e.waitUntil(network);
+          return hit;
+        }
+        return network;
+      }),
+    );
   }
 });
+
+async function trim(c) {
+  const keys = await c.keys();
+  for (let i = 0; i < keys.length - MAX_PAGES; i++) if (!keys[i].url.endsWith(OFFLINE)) await c.delete(keys[i]);
+}
 
 self.addEventListener("push", (e) => {
   let data = { title: "Blockchain Pi", body: "", url: "/" };

@@ -99,3 +99,24 @@ export function buildLatest(net: Network, ledgers: Ledger[], ops: Operation[], n
     spark,
   };
 }
+
+/* ---------- Live updates (applied in the browser as stream records arrive) ---------- */
+
+export function withLedger(latest: Latest, l: Ledger): Latest {
+  if (latest.ledgers.some((x) => x.sequence === l.sequence)) return latest;
+  const prev = latest.ledgers[0];
+  const row: LatestLedger = { sequence: l.sequence, closed_at: l.closed_at, txs: l.successful_transaction_count, failed: l.failed_transaction_count, ops: l.operation_count };
+  const secs = prev ? Math.max(0, (Date.parse(l.closed_at) - Date.parse(prev.closed_at)) / 1000) : 5;
+  return {
+    ...latest,
+    ledgers: [row, ...latest.ledgers].slice(0, 10),
+    spark: [...latest.spark, { seq: l.sequence, txs: row.txs + row.failed, ops: row.ops, secs }].slice(-50),
+  };
+}
+
+export function withOperations(latest: Latest, ops: Operation[], native: string): Latest {
+  const seen = new Set(latest.activity.map((a) => a.id));
+  const fresh = ops.filter((o) => !seen.has(o.id)).reverse().map((o) => toActivity(o, native));
+  if (!fresh.length) return latest;
+  return { ...latest, activity: [...fresh, ...latest.activity].slice(0, 40) };
+}
