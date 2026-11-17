@@ -1,14 +1,27 @@
+import { unstable_cache } from "next/cache";
 import { getDb } from "./db";
 import type { Network } from "./horizon";
 
-/** Small per-instance memo so a burst of visitors does not hit Postgres for the same numbers. */
+/**
+ * Results are kept in Next's shared data cache, so every server instance reuses the same
+ * answer instead of each one querying Postgres. Falls back to a per-instance memo outside
+ * a Next request (scripts, tests).
+ */
 const memo = new Map<string, { at: number; value: unknown }>();
 async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
-  const hit = memo.get(key);
-  if (hit && Date.now() - hit.at < ttlMs) return hit.value as T;
-  const value = await load();
-  memo.set(key, { at: Date.now(), value });
-  return value;
+  try {
+    return await unstable_cache(async () => JSON.parse(JSON.stringify(await load())) as T, ["stats", key], {
+      revalidate: Math.max(1, Math.round(ttlMs / 1000)),
+      tags: ["stats"],
+    })();
+  } catch (e) {
+    if (!(e instanceof Error) || !/incrementalCache|static generation|unstable_cache/i.test(e.message)) throw e;
+    const hit = memo.get(key);
+    if (hit && Date.now() - hit.at < ttlMs) return hit.value as T;
+    const value = await load();
+    memo.set(key, { at: Date.now(), value });
+    return value;
+  }
 }
 
 export function statsEnabled() {

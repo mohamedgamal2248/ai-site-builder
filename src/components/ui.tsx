@@ -5,6 +5,7 @@ import type { Part } from "@/lib/operations";
 import { knownWallet } from "@/data/wallets";
 import { CopyButton } from "./CopyButton";
 import { WalletBadge } from "./WalletBadge";
+import { HoverLink } from "./HoverLink";
 
 /** Monospace identifier that never flips direction in RTL pages. */
 export function Mono({ children, title }: { children: ReactNode; title?: string }) {
@@ -20,32 +21,32 @@ export function AccountLink({ id, full = false }: { id: string; full?: boolean }
   const known = knownWallet(id);
   if (known && !full) {
     return (
-      <Link href={`/account/${id}`} className="id-link known" title={id}>
+      <HoverLink href={`/account/${id}`} className="id-link known" title={id}>
         <WalletBadge logo={known.logo} size={16} />
         <span>{known.label.split(" · ")[0]}</span>
-      </Link>
+      </HoverLink>
     );
   }
   return (
-    <Link href={`/account/${id}`} className="id-link">
+    <HoverLink href={`/account/${id}`} className="id-link">
       <Mono title={id}>{full ? id : shortId(id, 5, 5)}</Mono>
-    </Link>
+    </HoverLink>
   );
 }
 
 export function TxLink({ hash, full = false }: { hash: string; full?: boolean }) {
   return (
-    <Link href={`/tx/${hash}`} className="id-link">
+    <HoverLink href={`/tx/${hash}`} className="id-link">
       <Mono title={hash}>{full ? hash : shortId(hash, 6, 6)}</Mono>
-    </Link>
+    </HoverLink>
   );
 }
 
 export function LedgerLink({ seq }: { seq: number | string }) {
   return (
-    <Link href={`/blocks/${seq}`} className="id-link">
+    <HoverLink href={`/blocks/${seq}`} className="id-link">
       <Mono>{Number(seq).toLocaleString("en")}</Mono>
-    </Link>
+    </HoverLink>
   );
 }
 

@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatAmount, shortId, timeAgo } from "@/lib/format";
 import type { Dict } from "@/lib/i18n";
-import type { ActivityKind, Latest } from "@/lib/latest";
+import { buildLatest, type ActivityKind, type Latest } from "@/lib/activity";
+import type { Ledger, Operation } from "@/lib/horizon";
+import { HoverLink as Link } from "./HoverLink";
 import { knownWallet } from "@/data/wallets";
 import { WalletBadge } from "./WalletBadge";
 
@@ -29,7 +30,30 @@ function Acc({ id }: { id?: string }) {
   );
 }
 
-export function LiveFeed({ initial, t, lang }: { initial: Latest; t: Dict; lang: "ar" | "en" }) {
+/**
+ * Reads Pi's Horizon API straight from the browser (it allows cross-origin requests), so
+ * the live feed costs our server nothing. Falls back to /api/latest if Horizon is unreachable.
+ */
+async function poll(horizon: string, net: Latest["net"]): Promise<Latest> {
+  try {
+    const get = async <T,>(path: string) => {
+      const r = await fetch(`${horizon}${path}`, { cache: "no-store", headers: { Accept: "application/json" } });
+      if (!r.ok) throw new Error(String(r.status));
+      return ((await r.json()) as { _embedded: { records: T[] } })._embedded.records;
+    };
+    const [ledgers, ops] = await Promise.all([
+      get<Ledger>("/ledgers?order=desc&limit=11"),
+      get<Operation>("/operations?order=desc&limit=40&include_failed=true"),
+    ]);
+    return buildLatest(net, ledgers, ops);
+  } catch {
+    const r = await fetch(`/api/latest?net=${net}`, { cache: "no-store" });
+    if (!r.ok) throw new Error(String(r.status));
+    return (await r.json()) as Latest;
+  }
+}
+
+export function LiveFeed({ initial, t, lang, horizon }: { initial: Latest; t: Dict; lang: "ar" | "en"; horizon: string }) {
   const [data, setData] = useState(initial);
   const [online, setOnline] = useState(true);
   const [now, setNow] = useState(() => Date.now());
@@ -43,9 +67,7 @@ export function LiveFeed({ initial, t, lang }: { initial: Latest; t: Dict; lang:
     const tick = async () => {
       if (document.visibilityState === "visible") {
         try {
-          const res = await fetch(`/api/latest?net=${initial.net}`, { cache: "no-store" });
-          if (!res.ok) throw new Error(String(res.status));
-          const next = (await res.json()) as Latest;
+          const next = await poll(horizon, initial.net);
           if (stop) return;
           const added = new Set(next.ledgers.filter((l) => !seen.current.has(l.sequence)).map((l) => l.sequence));
           next.ledgers.forEach((l) => seen.current.add(l.sequence));
@@ -64,7 +86,7 @@ export function LiveFeed({ initial, t, lang }: { initial: Latest; t: Dict; lang:
       stop = true;
       clearTimeout(timer);
     };
-  }, [initial.net]);
+  }, [initial.net, horizon]);
 
   const status = <span className={`live-dot${online ? "" : " off"}`}>{online ? t.live : t.paused}</span>;
   const kindLabel: Record<ActivityKind, string> = {

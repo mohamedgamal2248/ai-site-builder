@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { lockOwner } from "@/lib/format";
-import { applyPage } from "@/lib/ingest";
+import { applyPage, shouldSkip } from "@/lib/ingest";
 import { backfillProgress } from "@/lib/stats";
 
 describe("lockOwner", () => {
@@ -89,5 +89,15 @@ describe.skipIf(!url)("applyPage (Postgres)", () => {
       { address: "GALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PXEQU", inflow: "0.0000000", outflow: "50000.0000000" },
       { address: "GASWBDATCXXIUGHR7DWSFAAONZB2L5NFMBTDCYQQ2TQLRQNCTKJ2AODM", inflow: "50000.0000000", outflow: "0.0000000" },
     ]);
+  });
+
+  it("skips a scheduled run only when caught up and the last run was recent", async () => {
+    await sql`insert into sync_state (net, stream, cursor) values (${net}, 'backlog', '1'), (${net}, 'last_run', 'x')
+              on conflict (net, stream) do update set cursor = excluded.cursor, updated_at = now()`;
+    expect(await shouldSkip(sql, net)).toBe(false);
+    await sql`update sync_state set cursor = '0' where net = ${net} and stream = 'backlog'`;
+    expect(await shouldSkip(sql, net)).toBe(true);
+    await sql`update sync_state set updated_at = now() - interval '10 minutes' where net = ${net} and stream = 'last_run'`;
+    expect(await shouldSkip(sql, net)).toBe(false);
   });
 });

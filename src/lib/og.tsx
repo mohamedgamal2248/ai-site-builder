@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 export const ogSize = { width: 1200, height: 630 };
 
 /** Shared look for link-preview images (English text: the image renderer has no Arabic font). */
-export function ogCard({ kicker, title, lines }: { kicker: string; title: string; lines: string[] }) {
+export function ogCard({ kicker, title, lines, cacheSeconds = 3600 }: { kicker: string; title: string; lines: string[]; cacheSeconds?: number }) {
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 64, background: "linear-gradient(135deg, #3d1f8f 0%, #6b3fd4 100%)", color: "#fff", fontFamily: "sans-serif" }}>
@@ -21,6 +21,10 @@ export function ogCard({ kicker, title, lines }: { kicker: string; title: string
         <div style={{ fontSize: 24, opacity: 0.7 }}>Pi Network blockchain explorer · independent, not affiliated with Pi Network</div>
       </div>
     ),
-    ogSize,
+    {
+      ...ogSize,
+      // Rendering a preview costs ~1–2 s of CPU; let the CDN keep it.
+      headers: { "Cache-Control": `public, max-age=${Math.min(cacheSeconds, 86400)}, s-maxage=${cacheSeconds}, stale-while-revalidate=86400` },
+    },
   );
 }

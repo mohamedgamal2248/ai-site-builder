@@ -14,7 +14,7 @@ export function getDb(): Sql | null {
   const url = process.env.DATABASE_URL;
   client = url
     ? postgres(url, {
-        max: Number(process.env.DATABASE_POOL_MAX || 3),
+        max: Number(process.env.DATABASE_POOL_MAX || 1),
         prepare: false,
         idle_timeout: 20,
         connect_timeout: 10,

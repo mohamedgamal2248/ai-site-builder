@@ -3,7 +3,7 @@ import { Suspense, type ReactNode } from "react";
 import { LiveFeed } from "@/components/LiveFeed";
 import { LoadMeter, Sparkline } from "@/components/Sparkline";
 import { compact, formatAmount, stroopsToPi, timeAgo } from "@/lib/format";
-import { horizon } from "@/lib/horizon";
+import { horizon, horizonHost } from "@/lib/horizon";
 import { getLatest } from "@/lib/latest";
 import { getCandles, getMarket, getPiPrice } from "@/lib/price";
 import { PriceCard } from "@/components/PriceCard";
@@ -207,5 +207,5 @@ async function Price({ s }: { s: Settings }) {
 
 async function Feed({ s }: { s: Settings }) {
   const latest = await getLatest(s.net, s.native);
-  return <LiveFeed initial={latest} t={s.t} lang={s.lang} />;
+  return <LiveFeed initial={latest} t={s.t} lang={s.lang} horizon={horizonHost(s.net)} />;
 }

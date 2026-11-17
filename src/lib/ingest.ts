@@ -363,19 +363,44 @@ export async function ingestAll(sql: Sql, nets: Network[], budgetMs: number, ext
     }
   }
   const heavy: [Stream, number][] = [["claimable", 0.4], ["operations_bf", 0.4], ["ledgers_bf", 0.2]];
+  let backlog = false;
   for (const net of nets) {
     const left = hardDeadline - reserve - Date.now();
     for (const [stream, share] of heavy) {
-      if (left <= 0) break;
+      if (left <= 0) {
+        backlog = true;
+        break;
+      }
       const r = await ingestStream(sql, net, stream, Math.min(hardDeadline - reserve, Date.now() + left * share));
       results.push(r);
+      if (!r.caughtUp) backlog = true;
     }
   }
   for (const net of nets) {
     maintenance[`${net}:pruned_lockups`] = await pruneLockups(sql);
     maintenance[`${net}:wallet_snapshots`] = await snapshotWallets(sql, net);
-    maintenance[`${net}:holders_refreshed`] = await refreshHolders(sql, net, Date.now() < hardDeadline - 5000 ? 150 : 30);
+    // While history is still being filled the holder queue is long; afterwards a small batch keeps up.
+    const holderBatch = Date.now() > hardDeadline - 5000 ? 20 : backlog ? 150 : 50;
+    maintenance[`${net}:holders_refreshed`] = await refreshHolders(sql, net, holderBatch);
     if (extra) maintenance[`${net}:extra`] = await extra(sql, net, hardDeadline);
   }
-  return { results, maintenance };
+  for (const net of nets) {
+    await setState(sql, net, "backlog", backlog ? "1" : "0");
+    await setState(sql, net, "last_run", new Date().toISOString());
+  }
+  return { results, maintenance, backlog };
+}
+
+/**
+ * The scheduler calls every 2 minutes. While history is being filled every call works; once
+ * everything is caught up, runs closer than `minGapSec` apart are skipped, so the effective
+ * cadence drops to ~5 minutes and a skipped call costs a single small query.
+ */
+export async function shouldSkip(sql: Sql, net: Network, minGapSec = 270) {
+  const rows = await sql<{ stream: string; cursor: string; age: number }[]>`
+    select stream, cursor, extract(epoch from now() - updated_at)::int as age
+    from sync_state where net = ${net} and stream in ('backlog', 'last_run')`;
+  const backlog = rows.find((r) => r.stream === "backlog");
+  const last = rows.find((r) => r.stream === "last_run");
+  return !!backlog && backlog.cursor === "0" && !!last && last.age < minGapSec;
 }

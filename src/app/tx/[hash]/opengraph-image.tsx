@@ -16,6 +16,7 @@ export default async function Image({ params }: { params: Promise<{ hash: string
     const pay = ops.records.find((o) => o.type === "payment" || o.type === "create_account");
     const amount = pay ? Number((pay.amount ?? pay.starting_balance) as string) : null;
     return ogCard({
+      cacheSeconds: 60 * 60 * 24 * 365, // a closed transaction never changes
       kicker: `Transaction · ${shortId(tx.hash, 8, 8)}`,
       title: amount !== null ? `${amount.toLocaleString("en", { maximumFractionDigits: 2 })} Pi` : `${tx.operation_count} operation${tx.operation_count === 1 ? "" : "s"}`,
       lines: [
@@ -24,6 +25,6 @@ export default async function Image({ params }: { params: Promise<{ hash: string
       ],
     });
   } catch {
-    return ogCard({ kicker: "Transaction", title: shortId(hash, 8, 8), lines: [] });
+    return ogCard({ kicker: "Transaction", title: shortId(hash, 8, 8), lines: [], cacheSeconds: 300 });
   }
 }
