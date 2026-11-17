@@ -45,6 +45,12 @@ export function NavMenu({ home, groups, quick, labels }: { home: string; groups:
   }, []);
 
   useEffect(() => {
+    const openDrawer = () => setDrawer(true);
+    window.addEventListener("bp:menu", openDrawer);
+    return () => window.removeEventListener("bp:menu", openDrawer);
+  }, []);
+
+  useEffect(() => {
     document.body.style.overflow = drawer ? "hidden" : "";
   }, [drawer]);
 

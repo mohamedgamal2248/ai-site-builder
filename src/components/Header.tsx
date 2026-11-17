@@ -41,6 +41,17 @@ export function Header({ s }: { s: Settings }) {
               <small>{t.tagline}</small>
             </span>
           </Link>
+          <SearchBox
+          labels={{
+            search: t.search,
+            placeholder: t.searchShort,
+            ledger: t.searchHintLedger,
+            tx: t.searchHintTx,
+            account: t.searchHintAccount,
+            asset: t.searchHintAsset,
+            unknown: t.searchHintUnknown,
+          }}
+        />
           <div className="toggles">
             <a className="icon-pill" href={`/settings?k=theme&v=${NEXT_THEME[theme]}`} title={`${t.theme}: ${themeLabel}`} aria-label={`${t.theme}: ${themeLabel}`}>
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -58,19 +69,6 @@ export function Header({ s }: { s: Settings }) {
               <span className="net-short">{lang === "ar" ? "EN" : "ع"}</span>
             </a>
           </div>
-        </div>
-        <div className="container">
-          <SearchBox
-            labels={{
-              search: t.search,
-              placeholder: t.searchShort,
-              ledger: t.searchHintLedger,
-              tx: t.searchHintTx,
-              account: t.searchHintAccount,
-              asset: t.searchHintAsset,
-              unknown: t.searchHintUnknown,
-            }}
-          />
         </div>
       </header>
       <nav className="main-nav" aria-label="Main">

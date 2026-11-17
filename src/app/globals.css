@@ -17,7 +17,9 @@
   --radius: 14px;
   --hero-1: #5b2fc9;
   --hero-2: #7d4fe6;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Arabic", Tahoma, sans-serif;
+  --font: var(--font-plex), system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Arabic", Tahoma, sans-serif;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --chart: #6b3fd4;
   --grid: #ebe7f4;
@@ -551,3 +553,179 @@ pre.code { background: var(--surface-2); border: 1px solid var(--border); border
 .rule input[type="number"] { width: 110px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
 .rule input[type="number"]:disabled { opacity: .45; }
 .report-nav { display: flex; justify-content: space-between; gap: 8px; margin: 4px 0 12px; font-size: 14px; }
+
+/* =====================================================================
+   UI refresh: type scale, one-row header, phone tab bar, compact rows,
+   touch targets and motion. Every animation respects reduced motion.
+   ===================================================================== */
+
+/* ---------- Type ---------- */
+body { font-variant-numeric: tabular-nums; letter-spacing: 0; -webkit-font-smoothing: antialiased; }
+.stat .value, .today-grid strong, .hero .v { font-weight: 700; letter-spacing: -0.01em; }
+.hero .price-v { font-size: 30px; }
+@media (min-width: 720px) { .hero .price-v { font-size: 34px; } }
+.stat .value { font-size: 18px; }
+.mono { font-variant-numeric: tabular-nums; }
+
+/* ---------- Header: one row on desktop, brand + toggles then search on phones ---------- */
+.header-top { flex-wrap: wrap; row-gap: 0; }
+.header-top .search { order: 3; flex: 1 0 100%; padding-top: 8px; padding-bottom: 0; }
+@media (min-width: 900px) {
+  .header-top { flex-wrap: nowrap; gap: 20px; }
+  .brand { flex: none; }
+  .header-top .search { order: 0; flex: 1 1 auto; max-width: 620px; margin-inline: auto; padding: 0; }
+}
+.icon-pill { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); }
+.net-pill, .lang-pill { height: 38px; padding: 0 12px; }
+.icon-pill:hover { border-color: var(--accent); text-decoration: none; }
+
+/* ---------- Phone tab bar ---------- */
+.bottom-nav { display: none; }
+@media (max-width: 899px) {
+  .nav-mobile { display: none; }
+  .main-nav { border: 0; position: static; }
+  .bottom-nav {
+    display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; inset-inline: 0; bottom: 0; z-index: 40;
+    background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px);
+    border-top: 1px solid var(--border); padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+  }
+  .bottom-nav a, .bottom-nav button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px;
+    border: 0; background: none; color: var(--muted); font: inherit; font-size: 11px; font-weight: 500; border-radius: 12px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-nav a:hover { text-decoration: none; }
+  .bottom-nav svg { width: 23px; height: 23px; transition: transform .25s var(--ease-spring); }
+  .bottom-nav .active { color: var(--accent); }
+  .bottom-nav .active svg { transform: translateY(-1px) scale(1.08); }
+  .bottom-nav .active::after { content: ""; width: 18px; height: 3px; border-radius: 3px; background: var(--accent); margin-top: 1px; animation: pop-in .3s var(--ease-spring); }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+}
+
+/* ---------- Hero: index next to the price ---------- */
+@media (min-width: 720px) { .hero { grid-template-columns: 1.2fr 1fr 1fr auto; } }
+.hero-index { display: flex; align-items: center; gap: 10px; color: #fff; border-radius: 14px; padding: 8px 10px; background: rgba(255, 255, 255, .1); min-height: 72px; }
+.hero-index:hover { text-decoration: none; background: rgba(255, 255, 255, .16); }
+.hero-index .gauge .g-flat { stroke: rgba(255, 255, 255, .35); }
+.hero-index .gauge .g-needle { stroke: #fff; }
+.hero-index .gauge .g-hub { fill: #fff; }
+.hero-index .v small { font-size: 12px; }
+
+/* ---------- Stats: four on phones, the rest behind "More" ---------- */
+.more-btn { display: none; }
+@media (max-width: 719px) {
+  .stats-more:not(.open) .stats .stat:nth-child(n + 5) { display: none; }
+  .stats-more.open .stats .stat:nth-child(n + 5) { animation: rise .35s var(--ease-out) both; }
+  .more-btn {
+    display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; min-height: 40px; margin: -4px 0 12px;
+    border: 1px dashed var(--border); border-radius: 12px; background: none; color: var(--link); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  }
+  .more-btn svg { transition: transform .25s var(--ease-out); }
+  .stats-more.open .more-btn svg { transform: rotate(180deg); }
+}
+
+/* ---------- Live feed: tabs on phones, side by side on desktop ---------- */
+.feed-switch { display: none; }
+@media (max-width: 899px) {
+  .feed-switch {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 8px; border-radius: 12px;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .feed-switch button { min-height: 38px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: inherit; font-weight: 600; font-size: 14px; cursor: pointer; transition: background .2s, color .2s, box-shadow .2s; }
+  .feed-switch button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(28, 23, 48, .12); }
+  .live-feed.show-activity .feed-blocks, .live-feed.show-blocks .feed-activity { display: none; }
+  .live-feed .card { animation: fade .25s ease-out; }
+  .feed-blocks .rows li:nth-child(n + 8), .feed-activity .rows li:nth-child(n + 9) { display: none; }
+}
+
+/* ---------- Tables on phones: two-line rows ---------- */
+@media (max-width: 720px) {
+  table.data tr:has(td.m-aside) td:first-child { grid-column: 1; }
+  table.data td.m-aside { grid-column: 2; grid-row: 1; align-items: flex-end; text-align: end; }
+  table.data td.m-aside > * { align-self: flex-end; }
+  table.data td.m-aside::before, table.data td.m-plain::before, table.data td.m-meta::before { display: none; }
+  table.data td.m-plain { grid-column: 1 / -1; }
+  table.data td.m-meta { color: var(--muted); font-size: 12px; }
+  table.data td.m-meta + td.m-meta { align-items: flex-end; text-align: end; }
+  table.data td.m-meta + td.m-meta > * { align-self: flex-end; }
+  table.data td.m-hide { display: none; }
+  table.data tr { gap: 4px 14px; padding: 11px 0; }
+}
+.badge.status { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ---------- Touch targets ---------- */
+.tabs a, .tabs button { min-height: 36px; display: inline-flex; align-items: center; }
+.copy-btn { min-height: 30px; padding: 4px 10px; }
+.pager a, .pager .btn { min-height: 40px; display: inline-flex; align-items: center; }
+@media (max-width: 899px) {
+  .footer-cols a { padding: 5px 0; }
+  .drawer-link { min-height: 44px; display: flex; align-items: center; }
+  .rows .main-col > a, .id-link { padding-block: 2px; }
+}
+
+/* ---------- Motion ---------- */
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes pop-in { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes slide-in { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes needle { from { transform: rotate(-90deg); } }
+@keyframes ripple { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+@keyframes tick-up { 0% { color: #7dffb0; text-shadow: 0 0 18px rgba(125, 255, 176, .7); } 100% { color: inherit; text-shadow: none; } }
+@keyframes tick-down { 0% { color: #ffb2a1; text-shadow: 0 0 18px rgba(255, 140, 120, .7); } 100% { color: inherit; text-shadow: none; } }
+@keyframes progress { from { transform: scaleX(0); } to { transform: scaleX(.85); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 1. Page enter */
+  .page-enter { animation: rise .32s var(--ease-out) both; }
+  /* 2. Price tick */
+  .price-v.tick-up { animation: tick-up .9s ease-out; }
+  .price-v.tick-down { animation: tick-down .9s ease-out; }
+  /* 3. New blocks slide in */
+  .rows li.flash { animation: slide-in .45s var(--ease-out), flash 1.4s ease-out; }
+  /* 4. Gauge needle sweeps in */
+  .g-needle-wrap { transform: rotate(var(--rot)); transform-origin: 100px 95px; animation: needle 1.2s var(--ease-spring) both; animation-delay: .1s; }
+  /* 5. Charts draw */
+  .chart .line { stroke-dasharray: 1; animation: draw 1.1s var(--ease-out) both; }
+  .chart .area { animation: fade .9s .25s ease-out both; }
+  .chart .bar { transform-box: fill-box; transform-origin: 50% 100%; animation: grow .55s var(--ease-out) both; }
+  .chart .bar.below { transform-origin: 50% 0%; }
+  .spark polyline, .sparkline polyline { stroke-dasharray: 600; stroke-dashoffset: 600; animation: draw-long 1.2s var(--ease-out) forwards; }
+  /* 6. Cards reveal while scrolling (browsers with scroll-driven animations) */
+  @supports (animation-timeline: view()) {
+    .main .card, .main .stat { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+  }
+  /* 7. Live pulse ring */
+  .live-dot::before { animation: pulse 1.6s infinite, ripple 1.6s infinite; }
+  .net-pill .dot { animation: ripple 2.4s infinite; }
+  /* 8. Press feedback */
+  .btn, .tabs a, .tabs button, .nav-item, .icon-pill, .net-pill, .lang-pill, .bottom-nav a, .bottom-nav button, .more-btn, .feed-switch button, .copy-btn, .hero-index, .search button {
+    transition: transform .15s var(--ease-out), background-color .2s, color .2s, border-color .2s, box-shadow .2s;
+  }
+  .btn:active, .tabs a:active, .tabs button:active, .nav-item:active, .icon-pill:active, .net-pill:active, .lang-pill:active,
+  .bottom-nav a:active, .bottom-nav button:active, .more-btn:active, .feed-switch button:active, .copy-btn:active, .hero-index:active, .search button:active { transform: scale(.95); }
+  .card { transition: border-color .2s, box-shadow .2s; }
+  @media (hover: hover) { .stat:hover, .card:hover { border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); } }
+  /* 9. Copy confirmation */
+  .copy-btn.done { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+  .copy-btn .pop { display: inline-block; animation: pop-in .35s var(--ease-spring); }
+  /* Drawer and dropdowns */
+  .drawer-wrap { animation: fade .2s ease-out; }
+  .drawer { animation: drawer-in .3s var(--ease-out); }
+  .dropdown { animation: rise .18s var(--ease-out); transform-origin: top; }
+  .search-hint { animation: rise .2s var(--ease-out); }
+}
+@keyframes draw-long { to { stroke-dashoffset: 0; } }
+@keyframes drawer-in { from { transform: translateX(100%); } }
+@media (prefers-reduced-motion: no-preference) { [dir="rtl"] .drawer { animation-name: drawer-in-rtl; } }
+@keyframes drawer-in-rtl { from { transform: translateX(-100%); } }
+
+/* 10. Navigation progress bar */
+.nav-progress { position: fixed; top: 0; inset-inline: 0; height: 3px; z-index: 100; pointer-events: none; background: linear-gradient(90deg, var(--gold), var(--accent)); transform: scaleX(0); transform-origin: left; opacity: 0; }
+[dir="rtl"] .nav-progress { transform-origin: right; }
+.nav-progress.busy { opacity: 1; animation: progress 8s cubic-bezier(.1, .7, .2, 1) forwards; }
+.nav-progress.done { opacity: 0; transform: scaleX(1); transition: transform .2s ease-out, opacity .35s .15s; }
+@media (prefers-reduced-motion: reduce) { .nav-progress.busy { animation: none; transform: scaleX(.6); } }
+/* Phones: the tab bar and drawer carry every link, so the footer keeps only the brand and note. */
+@media (max-width: 899px) { .footer-cols > div:not(.footer-brand) { display: none; } .footer-cols { grid-template-columns: 1fr; padding-bottom: 4px; } }

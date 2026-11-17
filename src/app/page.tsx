@@ -7,6 +7,8 @@ import { horizon, horizonHost } from "@/lib/horizon";
 import { getLatest } from "@/lib/latest";
 import { getCandles, getMarket, getPiPrice } from "@/lib/price";
 import { PriceCard } from "@/components/PriceCard";
+import { PriceTicker } from "@/components/PriceTicker";
+import { StatsMore } from "@/components/StatsMore";
 import { getSettings, type Settings } from "@/lib/settings";
 import { getDaily, statsEnabled } from "@/lib/stats";
 import { Gauge } from "@/components/Gauge";
@@ -33,7 +35,7 @@ export default async function Home() {
         <Today s={s} />
       </Suspense>
       {s.net === "mainnet" && statsEnabled() ? (
-        <Suspense fallback={<div className="card skeleton-card" style={{ minHeight: 150 }} aria-hidden="true" />}>
+        <Suspense fallback={null}>
           <Insights s={s} />
         </Suspense>
       ) : null}
@@ -64,19 +66,7 @@ async function Hero({ s }: { s: Settings }) {
         {price ? (
           <div className="hero-block">
             <div className="k">{t.price}</div>
-            <div className="v">
-              <bdi dir="ltr">${price.last.toFixed(4)}</bdi>
-            </div>
-            <div className="s">
-              <span className={`chg ${price.changePct >= 0 ? "up" : "down"}`}>
-                <bdi dir="ltr">
-                  {price.changePct >= 0 ? "▲" : "▼"} {Math.abs(price.changePct).toFixed(2)}%
-                </bdi>
-              </span>
-              <span>{t.change24h}</span>
-              <span aria-hidden="true">·</span>
-              <span>{t.priceSource}</span>
-            </div>
+            <PriceTicker last={price.last} changePct={price.changePct} label={`${t.change24h} · ${t.priceSource}`} />
           </div>
         ) : (
           <div className="hero-block">
@@ -108,7 +98,28 @@ async function Hero({ s }: { s: Settings }) {
             </div>
           )}
         </div>
+        {main && statsEnabled() ? (
+          <Suspense fallback={<div className="hero-block hero-index" aria-hidden="true" />}>
+            <HeroIndex s={s} />
+          </Suspense>
+        ) : null}
       </section>
+  );
+}
+
+async function HeroIndex({ s }: { s: Settings }) {
+  const x = insightDicts[s.lang];
+  const idx = await getIndex(s.net).catch(() => null);
+  if (!idx) return null;
+  return (
+    <Link href="/pressure" className="hero-block hero-index">
+      <Gauge score={idx.score} label={x.indexTitle} size={96} />
+      <div>
+        <div className="k">{x.indexShort}</div>
+        <div className="v sub-v"><bdi dir="ltr">{idx.score === null ? "—" : idx.score.toFixed(0)}</bdi><small>/100</small></div>
+        <div className="s">{idx.band ? x.bands[idx.band] : x.notEnough}</div>
+      </div>
+    </Link>
   );
 }
 
@@ -163,7 +174,7 @@ async function NetworkStats({ s }: { s: Settings }) {
     { label: t.protocol, value: <bdi dir="ltr">v{ledger.protocol_version}</bdi>, hint: main ? t.mainnet : t.testnet },
   ];
   return (
-      <div className="stats eight">
+      <StatsMore labels={{ more: insightDicts[lang].more, less: insightDicts[lang].less }}>
         {stats.map((st) => (
           <div className="stat" key={st.label}>
             <div className="label">{st.label}</div>
@@ -172,7 +183,7 @@ async function NetworkStats({ s }: { s: Settings }) {
             {st.hint ? <div className="hint">{st.hint}</div> : null}
           </div>
         ))}
-      </div>
+      </StatsMore>
   );
 }
 
@@ -188,11 +199,15 @@ async function Today({ s }: { s: Settings }) {
             <Link href="/stats">{t.viewAll}</Link>
           </header>
           <div className="today-grid">
-            <div><span>{t.transactions}</span><strong><bdi dir="ltr">{today.txs.toLocaleString("en")}</bdi></strong></div>
+            <div><span>{insightDicts[lang].succeeded}</span><strong><bdi dir="ltr">{today.txs.toLocaleString("en")}</bdi></strong></div>
             <div><span>{t.payments}</span><strong><bdi dir="ltr">{today.payments.toLocaleString("en")}</bdi></strong></div>
             <div><span>{t.volume}</span><strong><bdi dir="ltr">{compact(today.payment_volume, lang)}</bdi> <small>{native}</small></strong></div>
             <div><span>{t.newAccounts}</span><strong><bdi dir="ltr">{today.new_accounts.toLocaleString("en")}</bdi></strong></div>
-            <div><span>{t.failedTx}</span><strong><bdi dir="ltr">{today.failed_txs.toLocaleString("en")}</bdi></strong></div>
+            <div>
+              <span>{insightDicts[lang].successRate}</span>
+              <strong><bdi dir="ltr">{today.txs + today.failed_txs ? ((today.txs / (today.txs + today.failed_txs)) * 100).toFixed(0) : "—"}%</bdi></strong>
+              <small><bdi dir="ltr">{today.failed_txs.toLocaleString("en")}</bdi> {t.failedTx}</small>
+            </div>
           </div>
         </section>
       ) : null}
@@ -215,56 +230,36 @@ async function Price({ s }: { s: Settings }) {
 
 async function Feed({ s }: { s: Settings }) {
   const latest = await getLatest(s.net, s.native);
-  return <LiveFeed initial={latest} t={s.t} lang={s.lang} horizon={horizonHost(s.net)} />;
+  const x = insightDicts[s.lang];
+  return <LiveFeed initial={latest} t={s.t} lang={s.lang} horizon={horizonHost(s.net)} tabs={{ blocks: x.blocksTab, activity: x.activityTab }} />;
 }
 
 async function Insights({ s }: { s: Settings }) {
   const { t, net, lang, native } = s;
   const x = insightDicts[lang];
-  const [idx, alerts] = await Promise.all([getIndex(net).catch(() => null), getAlerts(net, ["foundation", "inflow_spike"], 4).catch(() => [])]);
-  if (!idx) return null;
+  const alerts = await getAlerts(net, ["foundation", "inflow_spike"], 4).catch(() => []);
+  if (!alerts.length) return null;
   const now = Date.now();
   return (
-    <div className="grid-feed">
-      <section className="card">
-        <header className="card-head">
-          <h2>{x.indexTitle}</h2>
-          <Link href="/pressure">{t.viewAll}</Link>
-        </header>
-        <div className="index-mini">
-          <Gauge score={idx.score} label={x.indexTitle} size={150} />
-          <div>
-            <div className="index-score"><bdi dir="ltr">{idx.score === null ? "—" : idx.score.toFixed(0)}</bdi><small>/100</small></div>
-            <div className={`index-band band-${idx.band ?? "none"}`}>{idx.band ? x.bands[idx.band] : x.notEnough}</div>
-          </div>
-        </div>
-        <p className="muted" style={{ fontSize: 11.5, margin: "6px 0 0" }}>{x.disclaimer}</p>
-      </section>
-      <section className="card">
-        <header className="card-head">
-          <h2>{x.recent}</h2>
-          <Link href="/alerts">{t.viewAll}</Link>
-        </header>
-        {alerts.length === 0 ? (
-          <p className="muted">{x.collecting}</p>
-        ) : (
-          <ul className="news">
-            {alerts.map((a) => (
-              <li key={a.id}>
-                <Link href={a.tx_hash ? `/tx/${a.tx_hash}` : "/alerts"}>
-                  {a.kind === "foundation" ? x.kindFoundation : x.kindSpike}
-                  {a.amount ? <> · <bdi dir="ltr">{compact(Number(a.amount), lang)}</bdi> {native}</> : null}
-                </Link>
-                <div className="muted">
-                  {a.kind === "foundation" ? x.dest[String(a.meta?.dest ?? "unknown")] ?? x.dest.unknown : null}
-                  {a.kind === "foundation" ? " · " : null}
-                  <span suppressHydrationWarning>{timeAgo(a.at, now, lang)}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
+    <section className="card">
+      <header className="card-head">
+        <h2>{x.recent}</h2>
+        <Link href="/alerts">{t.viewAll}</Link>
+      </header>
+      <ul className="news">
+        {alerts.map((a) => (
+          <li key={a.id}>
+            <Link href={a.tx_hash ? `/tx/${a.tx_hash}` : "/alerts"}>
+              {a.kind === "foundation" ? x.kindFoundation : x.kindSpike}
+              {a.amount ? <> · <bdi dir="ltr">{compact(Number(a.amount), lang)}</bdi> {native}</> : null}
+            </Link>
+            <div className="muted">
+              {a.kind === "foundation" ? <>{x.dest[String(a.meta?.dest ?? "unknown")] ?? x.dest.unknown} · </> : null}
+              <span suppressHydrationWarning>{timeAgo(a.at, now, lang)}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

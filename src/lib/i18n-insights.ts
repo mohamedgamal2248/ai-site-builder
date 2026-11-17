@@ -4,6 +4,14 @@ import type { ComponentKey } from "./pindex";
 const en = {
   group: "Insights",
   index: "Pressure index",
+  indexShort: "Index",
+  more: "More",
+  less: "Less",
+  blocksTab: "Blocks",
+  activityTab: "Activity",
+  successRate: "Success rate",
+  succeeded: "Successful tx",
+  emptyEvents: "No notable events in the last few days.",
   indexTitle: "Pi Pressure Index",
   indexIntro:
     "One number from six signals: Pi flowing into exchanges, Foundation outflows, what the biggest holders do, upcoming unlocks, large deposits and the order books. 50 is a normal day. Lower means selling pressure is building, higher means buying pressure.",
@@ -120,6 +128,14 @@ export type InsightDict = typeof en;
 const ar: InsightDict = {
   group: "مؤشرات",
   index: "مؤشر الضغط",
+  indexShort: "المؤشر",
+  more: "المزيد",
+  less: "أقل",
+  blocksTab: "البلوكات",
+  activityTab: "النشاط",
+  successRate: "نسبة النجاح",
+  succeeded: "معاملات ناجحة",
+  emptyEvents: "مفيش أحداث مهمة في آخر كام يوم.",
   indexTitle: "مؤشر ضغط Pi",
   indexIntro:
     "رقم واحد من 6 إشارات: الـ Pi الداخل للمنصات، وخروج Pi من الفاونديشن، وتصرف أكبر الحاملين، وفك القفل الجاي، والإيداعات الكبيرة، ودفاتر الأوامر. 50 يعني يوم عادي. أقل من كده معناه ضغط بيع بيتكوّن، وأعلى معناه ضغط شراء.",

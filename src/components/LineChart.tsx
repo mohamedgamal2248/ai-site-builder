@@ -73,7 +73,7 @@ export function LineChart({ points, prefix = "", decimals = 4, locale, timeMode,
           <line key={v} x1={PAD_LEFT} x2={W - PAD_RIGHT} y1={y(v)} y2={y(v)} className="grid" vectorEffect="non-scaling-stroke" />
         ))}
         <path d={area} className="area" />
-        <path d={line} className="line" vectorEffect="non-scaling-stroke" />
+        <path d={line} className="line" pathLength={1} vectorEffect="non-scaling-stroke" />
         {hp ? <line x1={x(hp.t)} x2={x(hp.t)} y1={PAD_TOP} y2={H - PAD_BOTTOM} className="crosshair" vectorEffect="non-scaling-stroke" /> : null}
       </svg>
       <div className="line-axis">

@@ -7,7 +7,7 @@ export function CopyButton({ value, label, copied }: { value: string; label: str
   return (
     <button
       type="button"
-      className="copy-btn"
+      className={`copy-btn${done ? " done" : ""}`}
       aria-label={label}
       title={label}
       onClick={async () => {
@@ -20,7 +20,7 @@ export function CopyButton({ value, label, copied }: { value: string; label: str
         }
       }}
     >
-      {done ? copied : label}
+      {done ? <span className="pop">✓ {copied}</span> : label}
     </button>
   );
 }

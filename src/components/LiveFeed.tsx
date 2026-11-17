@@ -53,7 +53,8 @@ async function poll(horizon: string, net: Latest["net"]): Promise<Latest> {
   }
 }
 
-export function LiveFeed({ initial, t, lang, horizon }: { initial: Latest; t: Dict; lang: "ar" | "en"; horizon: string }) {
+export function LiveFeed({ initial, t, lang, horizon, tabs }: { initial: Latest; t: Dict; lang: "ar" | "en"; horizon: string; tabs: { blocks: string; activity: string } }) {
+  const [view, setView] = useState<"activity" | "blocks">("activity");
   const [data, setData] = useState(initial);
   const [online, setOnline] = useState(true);
   const [now, setNow] = useState(() => Date.now());
@@ -99,8 +100,15 @@ export function LiveFeed({ initial, t, lang, horizon }: { initial: Latest; t: Di
   const rows = data.activity.filter((a) => filter === "all" || a.kind === filter);
 
   return (
-    <div className="grid-feed">
-      <section className="card">
+    <div className={`grid-feed live-feed show-${view}`}>
+      <div className="feed-switch" role="tablist">
+        {(["activity", "blocks"] as const).map((v) => (
+          <button key={v} type="button" role="tab" aria-selected={view === v} className={view === v ? "active" : undefined} onClick={() => setView(v)}>
+            {tabs[v]}
+          </button>
+        ))}
+      </div>
+      <section className="card feed-blocks">
         <header className="card-head">
           <h2>{t.latestBlocks}</h2>
           <span className="head-actions">
@@ -134,7 +142,7 @@ export function LiveFeed({ initial, t, lang, horizon }: { initial: Latest; t: Di
         </ul>
       </section>
 
-      <section className="card">
+      <section className="card feed-activity">
         <header className="card-head">
           <h2>{t.liveActivity}</h2>
           <span className="head-actions">

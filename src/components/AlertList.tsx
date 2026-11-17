@@ -27,9 +27,10 @@ export function AlertList({ rows, x, lang, native, empty }: { rows: AlertRow[]; 
               </span>
             ),
         },
-        { label: "Pi", cell: (r) => (r.amount ? <Amount value={Number(r.amount).toFixed(0)} asset={native} /> : "—"), className: "num" },
+        { label: "Pi", cell: (r) => (r.amount ? <Amount value={Number(r.amount).toFixed(0)} asset={native} /> : "—"), className: "num", m: "aside" },
         {
           label: "→",
+          m: "plain",
           cell: (r) =>
             r.from_acc ? (
               <span className="op-summary">
@@ -39,8 +40,8 @@ export function AlertList({ rows, x, lang, native, empty }: { rows: AlertRow[]; 
               "—"
             ),
         },
-        { label: "⏱", cell: (r) => <span title={formatDate(r.at, lang)} suppressHydrationWarning>{timeAgo(r.at, now, lang)}</span> },
-        { label: "Tx", cell: (r) => (r.tx_hash ? <TxLink hash={r.tx_hash} /> : "—") },
+        { label: "⏱", cell: (r) => <span title={formatDate(r.at, lang)} suppressHydrationWarning>{timeAgo(r.at, now, lang)}</span>, m: "meta" },
+        { label: "Tx", cell: (r) => (r.tx_hash ? <TxLink hash={r.tx_hash} /> : "—"), m: "meta" },
       ]}
     />
   );

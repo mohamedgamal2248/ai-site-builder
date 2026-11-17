@@ -76,7 +76,7 @@ export function BarChart({ bars, locale, ariaLabel, warmPositive = false }: { ba
               }
               return (
                 <g key={b.key}>
-                  {d ? <path d={d} className={`bar${(b.value < 0) !== warmPositive ? " neg" : ""}${hover === i ? " on" : ""}`} /> : null}
+                  {d ? <path d={d} className={`bar${(b.value < 0) !== warmPositive ? " neg" : ""}${b.value < 0 ? " below" : ""}${hover === i ? " on" : ""}`} style={{ animationDelay: `${Math.min(i * 12, 400)}ms` }} /> : null}
                   {/* Hit target wider and taller than the mark. */}
                   <rect
                     x={PAD_LEFT + slot * i}

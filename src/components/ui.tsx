@@ -60,7 +60,14 @@ export function Amount({ value, asset, max }: { value: string | number | undefin
 }
 
 export function Status({ ok, labels }: { ok: boolean; labels: { success: string; failed: string } }) {
-  return <span className={`badge ${ok ? "ok" : "bad"}`}>{ok ? labels.success : labels.failed}</span>;
+  return (
+    <span className={`badge status ${ok ? "ok" : "bad"}`}>
+      <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {ok ? <path d="m3.5 8.5 3 3 6-7" /> : <path d="m4.5 4.5 7 7m0-7-7 7" />}
+      </svg>
+      {ok ? labels.success : labels.failed}
+    </span>
+  );
 }
 
 export function Copyable({ value, label, copied }: { value: string; label: string; copied: string }) {
@@ -103,6 +110,11 @@ export interface Column<T> {
   label: string;
   cell: (row: T) => ReactNode;
   className?: string;
+  /**
+   * Phone layout: "aside" sits beside the title in the first line, "plain" spans the card
+   * without a label, "meta" goes in a small muted footer line, "hide" is desktop-only.
+   */
+  m?: "aside" | "plain" | "meta" | "hide";
 }
 
 /** Table on wide screens, stacked cards on phones (labels come from data-label). */
@@ -124,7 +136,7 @@ export function DataTable<T>({ columns, rows, rowKey, empty }: { columns: Column
           {rows.map((r) => (
             <tr key={rowKey(r)}>
               {columns.map((c) => (
-                <td key={c.label} data-label={c.label} className={c.className}>
+                <td key={c.label} data-label={c.label} className={[c.className, c.m ? `m-${c.m}` : ""].filter(Boolean).join(" ") || undefined}>
                   {c.cell(r)}
                 </td>
               ))}

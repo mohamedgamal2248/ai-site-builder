@@ -23,7 +23,9 @@ export function Gauge({ score, label, size = 220 }: { score: number | null; labe
       ))}
       {a !== null ? (
         <>
-          <line x1={cx} y1={cy} x2={cx + (r - 18) * Math.cos(a)} y2={cy - (r - 18) * Math.sin(a)} className="g-needle" strokeWidth="3" strokeLinecap="round" />
+          <g className="g-needle-wrap" style={{ ["--rot" as string]: `${((score as number) - 50) * 1.8}deg` }}>
+            <line x1={cx} y1={cy} x2={cx} y2={cy - (r - 18)} className="g-needle" strokeWidth="3" strokeLinecap="round" />
+          </g>
           <circle cx={cx} cy={cy} r="6" className="g-hub" />
         </>
       ) : null}
