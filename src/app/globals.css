@@ -451,3 +451,19 @@ table.data .num { text-align: end; }
 pre.code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; overflow-x: auto; font-size: 12.5px; margin: 0; }
 
 @media (max-width: 719px) { .stats .span-mobile { grid-column: 1 / -1; } }
+
+/* ---------- Loading skeletons ---------- */
+.skeleton, .skeleton-stat, .skeleton-card, .skeleton-hero {
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--border) 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+.skeleton { height: 14px; border-radius: 6px; }
+.skeleton-title { height: 24px; width: 180px; border-radius: 8px; margin-bottom: 16px; }
+.skeleton-row { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.skeleton-row:last-child { border-bottom: 0; }
+.skeleton-stat { min-height: 92px; }
+.skeleton-card { min-height: 420px; }
+.skeleton-hero { min-height: 150px; border-radius: 18px; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton, .skeleton-stat, .skeleton-card, .skeleton-hero { animation: none; } }

@@ -1,75 +1,51 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { LiveFeed } from "@/components/LiveFeed";
 import { LoadMeter, Sparkline } from "@/components/Sparkline";
 import { compact, formatAmount, stroopsToPi, timeAgo } from "@/lib/format";
 import { horizon } from "@/lib/horizon";
 import { getLatest } from "@/lib/latest";
 import { getMarket, getPiPrice } from "@/lib/price";
-import { getSettings } from "@/lib/settings";
+import { getSettings, type Settings } from "@/lib/settings";
 import { getDaily, statsEnabled } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
+/*
+ * The page streams: each section renders as soon as its own data arrives,
+ * so a slow price or database call never holds up the rest.
+ */
 export default async function Home() {
   const s = await getSettings();
-  const { t, net, lang, native } = s;
-  const main = net === "mainnet";
-  const [latest, ledger, fees, price, market, today] = await Promise.all([
-    getLatest(net, native),
-    horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
-    horizon.feeStats(net).catch(() => null),
-    main ? getPiPrice() : Promise.resolve(null),
-    main ? getMarket() : Promise.resolve(null),
-    statsEnabled() ? getDaily(net, 1).then((r) => r[0] ?? null).catch(() => null) : Promise.resolve(null),
-  ]);
-
-  const usd = (n: number) => `$${compact(n, lang)}`;
-  const txs = latest.spark.map((p) => p.txs);
-  const secs = latest.spark.map((p) => p.secs);
-  const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
-  const load = fees ? Math.round(Number(fees.ledger_capacity_usage) * 100) : null;
-  const unit = <span className="unit"> {native}</span>;
-
-  const stats: { label: string; value: ReactNode; hint?: ReactNode; extra?: ReactNode }[] = [
-    {
-      label: t.latestBlock,
-      value: (
-        <Link href={`/blocks/${ledger.sequence}`}>
-          <bdi dir="ltr">#{ledger.sequence.toLocaleString("en")}</bdi>
-        </Link>
-      ),
-      hint: <span suppressHydrationWarning>{timeAgo(ledger.closed_at, Date.now(), lang)}</span>,
-    },
-    {
-      label: t.txPerBlock,
-      value: <bdi dir="ltr">{avg(txs).toFixed(1)}</bdi>,
-      hint: `${t.peak} ${Math.max(0, ...txs)} · ${t.last50}`,
-      extra: <Sparkline values={txs} label={`${t.txPerBlock}, ${t.last50}`} />,
-    },
-    {
-      label: t.blockTime,
-      value: <bdi dir="ltr">{avg(secs).toFixed(1)}{t.seconds}</bdi>,
-      hint: `${t.avg} · ${t.last50}`,
-      extra: <Sparkline values={secs} label={`${t.blockTime}, ${t.last50}`} />,
-    },
-    {
-      label: t.networkLoad,
-      value: load === null ? "—" : null,
-      extra: load === null ? null : <LoadMeter pct={load} labels={{ low: t.loadLow, medium: t.loadMedium, high: t.loadHigh }} />,
-    },
-    { label: t.totalSupply, value: <><bdi dir="ltr">{compact(ledger.total_coins, lang)}</bdi>{unit}</>, hint: <bdi dir="ltr">{formatAmount(ledger.total_coins, 0)}</bdi> },
-    { label: t.feePool, value: <><bdi dir="ltr">{compact(ledger.fee_pool, lang)}</bdi>{unit}</> },
-    {
-      label: t.baseFee,
-      value: <><bdi dir="ltr">{stroopsToPi(ledger.base_fee_in_stroops)}</bdi>{unit}</>,
-      hint: <>{t.baseReserve} <bdi dir="ltr">{stroopsToPi(ledger.base_reserve_in_stroops)}</bdi></>,
-    },
-    { label: t.protocol, value: <bdi dir="ltr">v{ledger.protocol_version}</bdi>, hint: main ? t.mainnet : t.testnet },
-  ];
-
   return (
     <>
+      <Suspense fallback={<div className="hero skeleton-hero" aria-hidden="true" />}>
+        <Hero s={s} />
+      </Suspense>
+      <Suspense fallback={<div className="stats eight" aria-hidden="true">{Array.from({ length: 8 }, (_, i) => <div key={i} className="stat skeleton-stat" />)}</div>}>
+        <NetworkStats s={s} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Today s={s} />
+      </Suspense>
+      <Suspense fallback={<div className="grid-feed" aria-hidden="true"><div className="card skeleton-card" /><div className="card skeleton-card" /></div>}>
+        <Feed s={s} />
+      </Suspense>
+      <p className="muted" style={{ fontSize: 12.5 }}>{s.t.apiNote}</p>
+    </>
+  );
+}
+
+async function Hero({ s }: { s: Settings }) {
+  const { t, net, lang, native } = s;
+  const main = net === "mainnet";
+  const [ledger, price, market] = await Promise.all([
+    horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
+    main ? getPiPrice() : Promise.resolve(null),
+    main ? getMarket() : Promise.resolve(null),
+  ]);
+  const usd = (n: number) => `$${compact(n, lang)}`;
+  return (
       <section className="hero" aria-label={t.tagline}>
         {price ? (
           <div className="hero-block">
@@ -119,7 +95,60 @@ export default async function Home() {
           )}
         </div>
       </section>
+  );
+}
 
+async function NetworkStats({ s }: { s: Settings }) {
+  const { t, net, lang, native } = s;
+  const main = net === "mainnet";
+  const [latest, ledger, fees] = await Promise.all([
+    getLatest(net, native),
+    horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
+    horizon.feeStats(net).catch(() => null),
+  ]);
+  const txs = latest.spark.map((p) => p.txs);
+  const secs = latest.spark.map((p) => p.secs);
+  const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+  const load = fees ? Math.round(Number(fees.ledger_capacity_usage) * 100) : null;
+  const unit = <span className="unit"> {native}</span>;
+
+  const stats: { label: string; value: ReactNode; hint?: ReactNode; extra?: ReactNode }[] = [
+    {
+      label: t.latestBlock,
+      value: (
+        <Link href={`/blocks/${ledger.sequence}`}>
+          <bdi dir="ltr">#{ledger.sequence.toLocaleString("en")}</bdi>
+        </Link>
+      ),
+      hint: <span suppressHydrationWarning>{timeAgo(ledger.closed_at, Date.now(), lang)}</span>,
+    },
+    {
+      label: t.txPerBlock,
+      value: <bdi dir="ltr">{avg(txs).toFixed(1)}</bdi>,
+      hint: `${t.peak} ${Math.max(0, ...txs)} · ${t.last50}`,
+      extra: <Sparkline values={txs} label={`${t.txPerBlock}, ${t.last50}`} />,
+    },
+    {
+      label: t.blockTime,
+      value: <bdi dir="ltr">{avg(secs).toFixed(1)}{t.seconds}</bdi>,
+      hint: `${t.avg} · ${t.last50}`,
+      extra: <Sparkline values={secs} label={`${t.blockTime}, ${t.last50}`} />,
+    },
+    {
+      label: t.networkLoad,
+      value: load === null ? "—" : null,
+      extra: load === null ? null : <LoadMeter pct={load} labels={{ low: t.loadLow, medium: t.loadMedium, high: t.loadHigh }} />,
+    },
+    { label: t.totalSupply, value: <><bdi dir="ltr">{compact(ledger.total_coins, lang)}</bdi>{unit}</>, hint: <bdi dir="ltr">{formatAmount(ledger.total_coins, 0)}</bdi> },
+    { label: t.feePool, value: <><bdi dir="ltr">{compact(ledger.fee_pool, lang)}</bdi>{unit}</> },
+    {
+      label: t.baseFee,
+      value: <><bdi dir="ltr">{stroopsToPi(ledger.base_fee_in_stroops)}</bdi>{unit}</>,
+      hint: <>{t.baseReserve} <bdi dir="ltr">{stroopsToPi(ledger.base_reserve_in_stroops)}</bdi></>,
+    },
+    { label: t.protocol, value: <bdi dir="ltr">v{ledger.protocol_version}</bdi>, hint: main ? t.mainnet : t.testnet },
+  ];
+  return (
       <div className="stats eight">
         {stats.map((st) => (
           <div className="stat" key={st.label}>
@@ -130,7 +159,14 @@ export default async function Home() {
           </div>
         ))}
       </div>
+  );
+}
 
+async function Today({ s }: { s: Settings }) {
+  const { t, net, lang, native } = s;
+  const today = statsEnabled() ? await getDaily(net, 1).then((r) => r[0] ?? null).catch(() => null) : null;
+  return (
+    <>
       {today ? (
         <section className="card today">
           <header className="card-head">
@@ -146,9 +182,11 @@ export default async function Home() {
           </div>
         </section>
       ) : null}
-
-      <LiveFeed initial={latest} t={t} lang={lang} />
-      <p className="muted" style={{ fontSize: 12.5 }}>{t.apiNote}</p>
     </>
   );
+}
+
+async function Feed({ s }: { s: Settings }) {
+  const latest = await getLatest(s.net, s.native);
+  return <LiveFeed initial={latest} t={s.t} lang={s.lang} />;
 }
