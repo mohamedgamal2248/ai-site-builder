@@ -5,12 +5,23 @@ import { useEffect, useRef, useState } from "react";
 import { formatAmount, shortId, timeAgo } from "@/lib/format";
 import type { Dict } from "@/lib/i18n";
 import type { ActivityKind, Latest } from "@/lib/latest";
+import { knownWallet } from "@/data/wallets";
+import { WalletBadge } from "./WalletBadge";
 
 const POLL_MS = 5000;
 const FILTERS: ("all" | ActivityKind)[] = ["all", "payment", "lock", "claim", "create"];
 
 function Acc({ id }: { id?: string }) {
   if (!id) return <span className="muted">—</span>;
+  const known = knownWallet(id);
+  if (known) {
+    return (
+      <Link href={`/account/${id}`} className="id-link known" title={id}>
+        <WalletBadge logo={known.logo} size={15} />
+        <span>{known.label.split(" · ")[0]}</span>
+      </Link>
+    );
+  }
   return (
     <Link href={`/account/${id}`}>
       <bdi className="mono" dir="ltr">{shortId(id, 4, 4)}</bdi>

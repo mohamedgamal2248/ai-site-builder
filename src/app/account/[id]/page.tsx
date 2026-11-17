@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { WatchButton } from "@/components/WatchButton";
-import { knownWallets } from "@/data/wallets";
+import { knownWallet } from "@/data/wallets";
+import { WalletBadge } from "@/components/WalletBadge";
 import { OpTable } from "@/components/OpTable";
 import { TxTable } from "@/components/TxTable";
 import { AccountLink, Amount, Card, Copyable, DataTable, Facts, Pager } from "@/components/ui";
@@ -56,7 +57,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
   });
 
   const qr = await QRCode.toString(id, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
-  const known = knownWallets.find((w) => w.address === id);
+  const known = knownWallet(id);
   const tabs: [string, string, string][] = [
     ["ops", t.operations, `/account/${id}`],
     ["txs", t.transactions, `/account/${id}?tab=txs`],
@@ -74,10 +75,32 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
         <div className="account-main">
           <div className="account-title">
             <h1>{t.account}</h1>
-            {known ? <span className="badge neutral">{t.knownAs}: {known.label}</span> : null}
+            {known ? (
+              <span className="id-link known">
+                <WalletBadge logo={known.logo} size={20} />
+                {lang === "ar" ? known.labelAr : known.label}
+              </span>
+            ) : null}
             <WatchButton id={id} labels={{ watch: t.watch, unwatch: t.unwatch }} />
           </div>
           <Copyable value={id} label={t.copy} copied={t.copied} />
+          {typeof sp.muxed === "string" && /^\d{1,20}$/.test(sp.muxed) ? (
+            <div className="known-banner">
+              <span>
+                {lang === "ar"
+                  ? <>ده عنوان إيداع مشتق (muxed) برقم <bdi dir="ltr">{sp.muxed}</bdi>، والفلوس بتتسجل على الحساب الأساسي ده.</>
+                  : <>That was a muxed deposit address with ID <bdi dir="ltr">{sp.muxed}</bdi>; funds settle in this base account.</>}
+              </span>
+            </div>
+          ) : null}
+          {known ? (
+            <div className="known-banner">
+              <span>
+                {(lang === "ar" ? known.noteAr : known.note) ? <>{lang === "ar" ? known.noteAr : known.note}<br /></> : null}
+                <span className="muted">{t.sourceCol}: {lang === "ar" ? known.sourceAr : known.source}</span>
+              </span>
+            </div>
+          ) : null}
         </div>
         <div className="qr" role="img" aria-label={t.qrTitle} title={t.qrTitle} dangerouslySetInnerHTML={{ __html: qr }} />
       </section>
@@ -91,18 +114,18 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
           <div className="stats">
             <div className="stat">
               <div className="label">{t.balance}</div>
-              <div className="value"><Amount value={nativeBal?.balance} asset={native} /></div>
+              <div className="value"><Amount value={nativeBal?.balance} asset={native} max={2} /></div>
             </div>
             <div className="stat">
               <div className="label">{t.available}</div>
               <div className="value">
-                <Amount value={Math.max(0, Number(nativeBal?.balance ?? 0) - reserved - Number(nativeBal?.selling_liabilities ?? 0)).toFixed(7)} asset={native} />
+                <Amount value={Math.max(0, Number(nativeBal?.balance ?? 0) - reserved - Number(nativeBal?.selling_liabilities ?? 0)).toFixed(7)} asset={native} max={2} />
               </div>
               <div className="hint">{t.reserved}: {formatAmount(reserved.toFixed(7))} {native}</div>
             </div>
             <div className="stat span-mobile">
               <div className="label">{t.locked}</div>
-              <div className="value"><Amount value={lockedTotal.toFixed(7)} asset={native} /></div>
+              <div className="value"><Amount value={lockedTotal.toFixed(7)} asset={native} max={2} /></div>
               <div className="hint">{locked.records.length} {lang === "ar" ? "رصيد" : locked.records.length === 1 ? "balance" : "balances"}</div>
             </div>
           </div>

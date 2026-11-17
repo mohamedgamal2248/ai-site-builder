@@ -9,6 +9,7 @@ export function GET(req: NextRequest) {
     ledger: `/blocks/${target.value}`,
     tx: `/tx/${target.value}`,
     account: `/account/${target.value}`,
+    muxed: `/account/${target.value}?muxed=${"id" in target ? target.id : ""}`,
     claimable: `/locked`,
     asset: `/assets?code=${encodeURIComponent(target.value)}`,
     unknown: `/not-found-search`,

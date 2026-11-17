@@ -34,7 +34,7 @@ export function SearchBox({ labels }: { labels: Labels }) {
   const hint =
     kind === "ledger" ? labels.ledger
     : kind === "tx" ? labels.tx
-    : kind === "account" ? labels.account
+    : kind === "account" || kind === "muxed" ? labels.account
     : kind === "asset" ? labels.asset
     : kind === "claimable" ? labels.tx
     : kind === "unknown" ? labels.unknown

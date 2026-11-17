@@ -91,6 +91,7 @@ export type SearchTarget =
   | { kind: "ledger"; value: string }
   | { kind: "tx"; value: string }
   | { kind: "account"; value: string }
+  | { kind: "muxed"; value: string; id: string }
   | { kind: "claimable"; value: string }
   | { kind: "asset"; value: string }
   | { kind: "unknown"; value: string };
@@ -102,6 +103,10 @@ export function classifySearch(raw: string): SearchTarget {
   if (/^[0-9a-fA-F]{64}$/.test(q)) return { kind: "tx", value: q.toLowerCase() };
   if (/^[0-9a-fA-F]{72}$/.test(q)) return { kind: "claimable", value: q.toLowerCase() };
   if (/^G[A-Z2-7]{55}$/.test(q.toUpperCase())) return { kind: "account", value: q.toUpperCase() };
+  if (/^M[A-Z2-7]{68}$/.test(q.toUpperCase())) {
+    const m = decodeMuxed(q);
+    if (m) return { kind: "muxed", value: m.account, id: m.id };
+  }
   if (/^[a-zA-Z0-9]{1,12}$/.test(q)) return { kind: "asset", value: q.toUpperCase() };
   return { kind: "unknown", value: q };
 }
@@ -112,4 +117,74 @@ export function classifySearch(raw: string): SearchTarget {
  */
 export function lockOwner<T extends { destination: string; predicate: Predicate }>(claimants: T[]): T | undefined {
   return claimants.find((c) => unlockTime(c.predicate)) ?? claimants[claimants.length - 1];
+}
+
+/* ---------- Muxed (M…) addresses ---------- */
+
+const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+function b32decode(s: string): Uint8Array | null {
+  let bits = 0;
+  let value = 0;
+  const out: number[] = [];
+  for (const ch of s) {
+    const v = B32.indexOf(ch);
+    if (v < 0) return null;
+    value = (value << 5) | v;
+    bits += 5;
+    if (bits >= 8) {
+      out.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  // Leftover bits must be zero padding, or the string is not canonical.
+  if (bits > 0 && (value & ((1 << bits) - 1)) !== 0) return null;
+  return new Uint8Array(out);
+}
+
+function b32encode(bytes: Uint8Array): string {
+  let bits = 0;
+  let value = 0;
+  let out = "";
+  for (const b of bytes) {
+    value = (value << 8) | b;
+    bits += 8;
+    while (bits >= 5) {
+      out += B32[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) out += B32[(value << (5 - bits)) & 31];
+  return out;
+}
+
+function crc16(bytes: Uint8Array) {
+  let crc = 0;
+  for (const b of bytes) {
+    crc ^= b << 8;
+    for (let i = 0; i < 8; i++) crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+  }
+  return crc;
+}
+
+/**
+ * Splits a muxed M… address (exchange deposit address) into its base G… account and numeric ID.
+ * Returns null when the checksum does not match.
+ */
+export function decodeMuxed(m: string): { account: string; id: string } | null {
+  const raw = b32decode(m.trim().toUpperCase());
+  if (!raw || raw.length !== 43 || raw[0] !== 12 << 3) return null;
+  const body = raw.slice(0, 41);
+  const sum = raw[41] | (raw[42] << 8);
+  if (crc16(body) !== sum) return null;
+  const key = raw.slice(1, 33);
+  let id = 0n;
+  for (const b of raw.slice(33, 41)) id = (id << 8n) | BigInt(b);
+  const g = new Uint8Array(35);
+  g[0] = 6 << 3;
+  g.set(key, 1);
+  const c = crc16(g.slice(0, 33));
+  g[33] = c & 0xff;
+  g[34] = c >> 8;
+  return { account: b32encode(g), id: id.toString() };
 }

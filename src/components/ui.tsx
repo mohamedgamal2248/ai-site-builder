@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { formatAmount, shortId } from "@/lib/format";
 import type { Part } from "@/lib/operations";
+import { knownWallet } from "@/data/wallets";
 import { CopyButton } from "./CopyButton";
+import { WalletBadge } from "./WalletBadge";
 
 /** Monospace identifier that never flips direction in RTL pages. */
 export function Mono({ children, title }: { children: ReactNode; title?: string }) {
@@ -15,6 +17,15 @@ export function Mono({ children, title }: { children: ReactNode; title?: string 
 
 export function AccountLink({ id, full = false }: { id: string; full?: boolean }) {
   if (!id) return <span className="muted">—</span>;
+  const known = knownWallet(id);
+  if (known && !full) {
+    return (
+      <Link href={`/account/${id}`} className="id-link known" title={id}>
+        <WalletBadge logo={known.logo} size={16} />
+        <span>{known.label.split(" · ")[0]}</span>
+      </Link>
+    );
+  }
   return (
     <Link href={`/account/${id}`} className="id-link">
       <Mono title={id}>{full ? id : shortId(id, 5, 5)}</Mono>
@@ -38,10 +49,10 @@ export function LedgerLink({ seq }: { seq: number | string }) {
   );
 }
 
-export function Amount({ value, asset }: { value: string | number | undefined; asset?: string }) {
+export function Amount({ value, asset, max }: { value: string | number | undefined; asset?: string; max?: number }) {
   return (
     <span className="amount">
-      <Mono>{formatAmount(value)}</Mono>
+      <Mono>{formatAmount(value, max)}</Mono>
       {asset ? <span className="asset"> {asset}</span> : null}
     </span>
   );

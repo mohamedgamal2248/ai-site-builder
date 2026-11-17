@@ -467,3 +467,21 @@ pre.code { background: var(--surface-2); border: 1px solid var(--border); border
 .skeleton-hero { min-height: 150px; border-radius: 18px; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton, .skeleton-stat, .skeleton-card, .skeleton-hero { animation: none; } }
+
+/* ---------- Known wallets ---------- */
+.wallet-badge { flex: none; display: inline-block; vertical-align: -3px; }
+.id-link.known { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; white-space: nowrap; }
+.wallet-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 720px) { .wallet-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .wallet-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.wallet-card { display: flex; flex-direction: column; gap: 8px; margin-bottom: 0; }
+.wallet-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.wallet-head .wallet-badge { width: 36px; height: 36px; }
+.wallet-head strong { display: block; font-size: 15px; }
+.wallet-balance { font-size: 20px; font-weight: 700; }
+.wallet-source { font-size: 12px; color: var(--muted); }
+.wallet-note { font-size: 13px; }
+.section-title { font-size: 16px; margin: 18px 0 10px; display: flex; align-items: center; gap: 8px; }
+.warn { padding: 12px 14px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--gold) 60%, transparent); background: color-mix(in srgb, var(--gold) 12%, transparent); font-size: 14px; margin-bottom: 12px; }
+.known-banner { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13.5px; }
+.known-banner .wallet-badge { width: 28px; height: 28px; }

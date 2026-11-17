@@ -32,3 +32,27 @@ describe("bucketDaily", () => {
     expect(bucketDaily(rows, "month").map((m) => [m.day, m.txs])).toEqual([["2026-11", 7]]);
   });
 });
+
+import { classifySearch, decodeMuxed } from "@/lib/format";
+import { knownWallet } from "@/data/wallets";
+
+describe("muxed addresses", () => {
+  it("decodes an exchange deposit address to its G account and ID", () => {
+    expect(decodeMuxed("MALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PWAAAAAAAABHPC7S3E")).toEqual({
+      account: "GALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PXEQU",
+      id: "323351",
+    });
+    expect(classifySearch("MALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PWAAAAAAAABHPC7S3E").kind).toBe("muxed");
+  });
+  it("rejects a mistyped or non-canonical muxed address", () => {
+    expect(decodeMuxed("MALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PWAAAAAAAABHPC7S4E")).toBeNull();
+    expect(decodeMuxed("MALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PWAAAAAAAABHPC7S3F")).toBeNull();
+  });
+});
+
+describe("known wallets", () => {
+  it("names OKX's hot wallet", () => {
+    expect(knownWallet("GALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PXEQU")?.logo).toBe("okx");
+    expect(knownWallet("GNOTKNOWN")).toBeUndefined();
+  });
+});
