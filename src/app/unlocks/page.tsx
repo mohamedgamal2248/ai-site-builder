@@ -7,6 +7,8 @@ import { horizon } from "@/lib/horizon";
 import { getSettings } from "@/lib/settings";
 import { AccountLink } from "@/components/ui";
 import { formatDate } from "@/lib/format";
+import { insightDicts } from "@/lib/i18n-insights";
+import { getUnlockPressure } from "@/lib/insights";
 import { backfillProgress, getSync, getTopLocked, getUnlockCalendar, getUnlocks, statsEnabled, type LockedHolder, type UnlockMonth } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
@@ -22,13 +24,16 @@ export default async function Unlocks() {
       </>
     );
   }
-  const [u, sync, ledger, top, cal] = await Promise.all([
+  const [u, sync, ledger, top, cal, pressure] = await Promise.all([
     getUnlocks(net, 24),
     getSync(net),
     horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
     getTopLocked(net, 25),
     getUnlockCalendar(net, 30),
+    getUnlockPressure(net).catch(() => null),
   ]);
+  const x = insightDicts[lang];
+  const days = (v: number) => (pressure?.volumePi ? x.daysOfVolume.replace("{n}", (v / pressure.volumePi).toFixed(1)) : null);
   const progress = backfillProgress(sync.find((s) => s.stream === "claimable")?.cursor, ledger.sequence);
   const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en";
 
@@ -53,6 +58,27 @@ export default async function Unlocks() {
           {progress < 99.9 ? <div className="hint">{t.coverageNote}</div> : null}
         </div>
       </div>
+      {pressure ? (
+        <Card title={x.unlockPressure}>
+          <div className="stats" style={{ marginBottom: 0 }}>
+            <div className="stat">
+              <div className="label">{x.next7}</div>
+              <div className="value"><bdi dir="ltr">{compact(pressure.d7, lang)}</bdi> <span className="unit">{native}</span></div>
+              {days(pressure.d7) ? <div className="hint">{days(pressure.d7)}</div> : null}
+            </div>
+            <div className="stat">
+              <div className="label">{x.next30}</div>
+              <div className="value"><bdi dir="ltr">{compact(pressure.d30, lang)}</bdi> <span className="unit">{native}</span></div>
+              {days(pressure.d30) ? <div className="hint">{days(pressure.d30)}</div> : null}
+            </div>
+            <div className="stat span-mobile">
+              <div className="label">{x.biggestDay}</div>
+              <div className="value">{pressure.biggest ? <><bdi dir="ltr">{compact(pressure.biggest.amount, lang)}</bdi> <span className="unit">{native}</span></> : "—"}</div>
+              {pressure.biggest ? <div className="hint"><bdi dir="ltr">{pressure.biggest.day}</bdi></div> : null}
+            </div>
+          </div>
+        </Card>
+      ) : null}
       <Card title={`${t.calendar} (${native})`}>
         <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>{t.calendarNote}</p>
         {cal.length ? (

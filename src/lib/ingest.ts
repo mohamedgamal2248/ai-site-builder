@@ -138,12 +138,41 @@ export async function applyPage(sql: Sql, net: Network, stream: Stream, records:
     return f;
   };
   const holders = new Set<string>();
+  const hourly = new Map<string, { exch_in: number; exch_out: number; found_out: number; found_to_exch: number; large_in_n: number }>();
+  const hour = (iso: string) => {
+    const k = `${iso.slice(0, 13)}:00:00Z`;
+    let h = hourly.get(k);
+    if (!h) hourly.set(k, (h = { exch_in: 0, exch_out: 0, found_out: 0, found_to_exch: 0, large_in_n: 0 }));
+    return h;
+  };
+  const alerts: Record<string, unknown>[] = [];
   const large: Record<string, unknown>[] = [];
   const claimed: { id: string; at: string }[] = [];
   const lockups: Record<string, unknown>[] = [];
   const now = Date.now();
 
-  const transfer = (from: string | undefined, to: string | undefined, amount: number, at: string) => {
+  const transfer = (from: string | undefined, to: string | undefined, amount: number, at: string, op?: Operation) => {
+    const kf = knownWallet(from);
+    const kt = knownWallet(to);
+    // Category-level hourly totals for the pressure index (transfers between two exchanges are ignored).
+    if (kt?.category === "exchange" && kf?.category !== "exchange") {
+      const h = hour(at);
+      h.exch_in += amount;
+      if (amount >= threshold) h.large_in_n += 1;
+    }
+    if (kf?.category === "exchange" && kt?.category !== "exchange") hour(at).exch_out += amount;
+    if (kf?.category === "foundation" && kt?.category !== "foundation") {
+      const h = hour(at);
+      h.found_out += amount;
+      if (kt?.category === "exchange") h.found_to_exch += amount;
+    }
+    // Foundation radar: any foundation wallet sending at least the large threshold.
+    if (op && kf?.category === "foundation" && amount >= threshold) {
+      alerts.push({
+        net, id: `f:${op.id}`, kind: "foundation", at, amount: amount.toFixed(7), from_acc: from, to_acc: to ?? null, tx_hash: op.transaction_hash,
+        meta: { dest: kt ? kt.category : "unknown" },
+      });
+    }
     if (from && knownWallet(from)) {
       const f = flow(from, at);
       f.outflow += amount;
@@ -176,7 +205,7 @@ export async function applyPage(sql: Sql, net: Network, stream: Stream, records:
         const amount = num(op.amount);
         d.payments += 1;
         d.payment_volume += amount;
-        transfer(op.from as string, op.to as string, amount, op.created_at);
+        transfer(op.from as string, op.to as string, amount, op.created_at, op);
         if (amount >= threshold) {
           large.push({ net, op_id: op.id, tx_hash: op.transaction_hash, ledger_time: op.created_at, from_acc: op.from as string, to_acc: op.to as string, amount: String(op.amount), kind: "payment" });
         }
@@ -184,7 +213,7 @@ export async function applyPage(sql: Sql, net: Network, stream: Stream, records:
         const amount = num(op.starting_balance);
         d.new_accounts += 1;
         d.payment_volume += amount;
-        transfer(op.funder as string, op.account as string, amount, op.created_at);
+        transfer(op.funder as string, op.account as string, amount, op.created_at, op);
         if (amount >= threshold) {
           large.push({ net, op_id: op.id, tx_hash: op.transaction_hash, ledger_time: op.created_at, from_acc: op.funder as string, to_acc: op.account as string, amount: String(op.starting_balance), kind: "create_account" });
         }
@@ -221,6 +250,21 @@ export async function applyPage(sql: Sql, net: Network, stream: Stream, records:
           outflow = wallet_flows_daily.outflow + excluded.outflow,
           n_in = wallet_flows_daily.n_in + excluded.n_in,
           n_out = wallet_flows_daily.n_out + excluded.n_out`;
+    }
+    for (const [h, v] of hourly) {
+      await tx`
+        insert into flows_hourly ${tx({ net, hour: h, exch_in: v.exch_in.toFixed(7), exch_out: v.exch_out.toFixed(7), found_out: v.found_out.toFixed(7), found_to_exch: v.found_to_exch.toFixed(7), large_in_n: v.large_in_n })}
+        on conflict (net, hour) do update set
+          exch_in = flows_hourly.exch_in + excluded.exch_in,
+          exch_out = flows_hourly.exch_out + excluded.exch_out,
+          found_out = flows_hourly.found_out + excluded.found_out,
+          found_to_exch = flows_hourly.found_to_exch + excluded.found_to_exch,
+          large_in_n = flows_hourly.large_in_n + excluded.large_in_n`;
+    }
+    if (alerts.length) {
+      // Backfilled history is recorded as already pushed, so nobody gets notified about old events.
+      const live = stream === "operations";
+      await tx`insert into alerts ${tx(alerts.map((a) => ({ ...a, meta: tx.json(a.meta as never), pushed: !live })))} on conflict do nothing`;
     }
     if (holders.size) {
       const rows = [...holders].filter((a) => /^G[A-Z2-7]{55}$/.test(a)).map((account) => ({ net, account, dirty: true }));
@@ -382,6 +426,7 @@ export async function ingestAll(sql: Sql, nets: Network[], budgetMs: number, ext
     // While history is still being filled the holder queue is long; afterwards a small batch keeps up.
     const holderBatch = Date.now() > hardDeadline - 5000 ? 20 : backlog ? 150 : 50;
     maintenance[`${net}:holders_refreshed`] = await refreshHolders(sql, net, holderBatch);
+    maintenance[`${net}:signals`] = await hourlySignals(sql, net).catch((e) => String(e).slice(0, 120));
     if (extra) maintenance[`${net}:extra`] = await extra(sql, net, hardDeadline);
   }
   for (const net of nets) {
@@ -403,4 +448,70 @@ export async function shouldSkip(sql: Sql, net: Network, minGapSec = 270) {
   const backlog = rows.find((r) => r.stream === "backlog");
   const last = rows.find((r) => r.stream === "last_run");
   return !!backlog && backlog.cursor === "0" && !!last && last.age < minGapSec;
+}
+
+/**
+ * Once per hour: stores the market snapshot, the top-100 holder total and the pressure index,
+ * and raises an alert when the last full hour's exchange inflow was far above normal.
+ */
+export async function hourlySignals(sql: Sql, net: Network) {
+  if (net !== "mainnet") return null;
+  const hourIso = `${new Date().toISOString().slice(0, 13)}:00:00Z`;
+  const have = await sql`select 1 from signals_hourly where net = ${net} and hour = ${hourIso}`;
+  if (have.length) return null;
+
+  const { computeIndex } = await import("./pindex");
+  const { getBooks, combinedImbalance, getVolumePi } = await import("./market");
+  const [idx, books, volumePi, top, ticker] = await Promise.all([
+    computeIndex(sql, net),
+    getBooks(60),
+    getVolumePi(300),
+    sql<{ s: string }[]>`select coalesce(sum(balance), 0)::text as s from (select balance from holders where net = ${net} and balance is not null order by balance desc limit 100) t`,
+    fetchJsonSafe<{ data?: { last: string }[] }>("https://www.okx.com/api/v5/market/ticker?instId=PI-USDT"),
+  ]);
+  const ob = combinedImbalance(books);
+  const price = Number(ticker?.data?.[0]?.last);
+  await sql`
+    insert into signals_hourly ${sql({
+      net,
+      hour: hourIso,
+      price: Number.isFinite(price) ? price : null,
+      volume_pi: volumePi,
+      book_bid: ob.bid || null,
+      book_ask: ob.ask || null,
+      top_sum: top[0]?.s ?? null,
+      score: idx.score,
+      components: sql.json(idx.components as never),
+    })}
+    on conflict do nothing`;
+
+  // Unusual inflow: last full hour vs the hourly history of the last 30 days.
+  const prevHour = new Date(Date.parse(hourIso) - 3_600_000).toISOString();
+  const hours = await sql<{ hour: string; exch_in: string }[]>`
+    select to_char(hour at time zone 'utc', 'YYYY-MM-DD"T"HH24:00:00"Z"') as hour, exch_in::text
+    from flows_hourly where net = ${net} and hour >= now() - interval '30 days'`;
+  const last = hours.find((h) => Date.parse(h.hour) === Date.parse(prevHour));
+  const rest = hours.filter((h) => h !== last).map((h) => Number(h.exch_in));
+  if (last && rest.length >= 48) {
+    const mean = rest.reduce((a, b) => a + b, 0) / rest.length;
+    const sd = Math.sqrt(rest.reduce((a, b) => a + (b - mean) ** 2, 0) / rest.length) || 1;
+    const v = Number(last.exch_in);
+    const z = (v - mean) / sd;
+    if (z >= 2.5 && v >= 200_000) {
+      await sql`
+        insert into alerts (net, id, kind, at, amount, meta)
+        values (${net}, ${`spike:${prevHour}`}, 'inflow_spike', ${prevHour}, ${v.toFixed(7)}, ${sql.json({ z: Math.round(z * 10) / 10, normal: Math.round(mean) })})
+        on conflict do nothing`;
+    }
+  }
+  return { hour: hourIso, score: idx.score };
+}
+
+async function fetchJsonSafe<T>(url: string): Promise<T | null> {
+  try {
+    const r = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(5000) });
+    return r.ok ? ((await r.json()) as T) : null;
+  } catch {
+    return null;
+  }
 }

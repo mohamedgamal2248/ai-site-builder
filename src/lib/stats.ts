@@ -8,7 +8,7 @@ import type { Network } from "./horizon";
  * a Next request (scripts, tests).
  */
 const memo = new Map<string, { at: number; value: unknown }>();
-async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
+export async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
   try {
     return await unstable_cache(async () => JSON.parse(JSON.stringify(await load())) as T, ["stats", key], {
       revalidate: Math.max(1, Math.round(ttlMs / 1000)),

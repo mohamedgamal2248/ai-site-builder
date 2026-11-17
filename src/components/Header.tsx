@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Settings } from "@/lib/settings";
+import { insightDicts } from "@/lib/i18n-insights";
 import { NavMenu } from "./NavMenu";
 import { SearchBox } from "./SearchBox";
 
@@ -7,13 +8,16 @@ const NEXT_THEME = { auto: "light", light: "dark", dark: "auto" } as const;
 
 export function Header({ s }: { s: Settings }) {
   const { t, lang, net, theme } = s;
+  const x = insightDicts[lang];
+  const insights: [string, string][] = [["/pressure", x.index], ["/pressure/accuracy", x.accuracy], ["/alerts", x.alerts], ["/radar", x.radar], ["/whale-tracker", x.whaleTracker], ["/depth", x.depth], ["/report", x.report], ["/news", x.news]];
   const groups = [
+    { label: x.group, items: insights },
     { label: t.groupChain, items: [["/blocks", t.blocks], ["/txs", t.transactions], ["/operations", t.operations]] as [string, string][] },
     { label: t.groupStats, items: [["/stats", t.stats], ["/flows", t.flows], ["/whales", t.whales], ["/supply", t.supply], ["/unlocks", t.unlocks], ["/largest", t.largest], ["/locked", t.locked]] as [string, string][] },
     { label: t.groupTokens, items: [["/assets", t.assets], ["/pools", t.pools], ["/trades", t.trades]] as [string, string][] },
     { label: t.groupTools, items: [["/wallets", t.wallets], ["/richlist", t.richlist], ["/watchlist", t.watchlist], ["/api-docs", t.apiDocs], ["/status", t.status]] as [string, string][] },
   ];
-  const quick: [string, string][] = [["/", t.home], ["/whales", t.whales], ["/flows", t.flows], ["/txs", t.transactions], ["/unlocks", t.unlocks]];
+  const quick: [string, string][] = [["/", t.home], ["/pressure", x.index], ["/whales", t.whales], ["/flows", t.flows], ["/txs", t.transactions], ["/unlocks", t.unlocks]];
   const themeLabel = { auto: t.themeAuto, light: t.themeLight, dark: t.themeDark }[theme];
   const themeIcon = {
     auto: <path d="M12 3a9 9 0 1 0 0 18V3Z" fill="currentColor" stroke="none" />,
@@ -77,8 +81,10 @@ export function Header({ s }: { s: Settings }) {
 }
 
 export function Footer({ s }: { s: Settings }) {
-  const { t } = s;
+  const { t, lang } = s;
+  const x = insightDicts[lang];
   const cols: [string, [string, string][]][] = [
+    [x.group, [["/pressure", x.index], ["/alerts", x.alerts], ["/radar", x.radar], ["/report", x.report], ["/news", x.news]]],
     [t.footerExplore, [["/blocks", t.blocks], ["/txs", t.transactions], ["/operations", t.operations], ["/assets", t.assets]]],
     [t.footerStats, [["/stats", t.stats], ["/flows", t.flows], ["/whales", t.whales], ["/supply", t.supply], ["/unlocks", t.unlocks]]],
     [t.footerDevelopers, [["/api-docs", t.apiDocs], ["https://github.com/mohamedgamal2248/ai-site-builder", t.sourceCode], ["https://api.mainnet.minepi.com", t.dataSource]]],

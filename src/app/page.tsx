@@ -9,6 +9,9 @@ import { getCandles, getMarket, getPiPrice } from "@/lib/price";
 import { PriceCard } from "@/components/PriceCard";
 import { getSettings, type Settings } from "@/lib/settings";
 import { getDaily, statsEnabled } from "@/lib/stats";
+import { Gauge } from "@/components/Gauge";
+import { insightDicts } from "@/lib/i18n-insights";
+import { getAlerts, getIndex } from "@/lib/insights";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +32,11 @@ export default async function Home() {
       <Suspense fallback={null}>
         <Today s={s} />
       </Suspense>
+      {s.net === "mainnet" && statsEnabled() ? (
+        <Suspense fallback={<div className="card skeleton-card" style={{ minHeight: 150 }} aria-hidden="true" />}>
+          <Insights s={s} />
+        </Suspense>
+      ) : null}
       {s.net === "mainnet" ? (
         <Suspense fallback={<div className="card skeleton-card" style={{ minHeight: 280 }} aria-hidden="true" />}>
           <Price s={s} />
@@ -208,4 +216,55 @@ async function Price({ s }: { s: Settings }) {
 async function Feed({ s }: { s: Settings }) {
   const latest = await getLatest(s.net, s.native);
   return <LiveFeed initial={latest} t={s.t} lang={s.lang} horizon={horizonHost(s.net)} />;
+}
+
+async function Insights({ s }: { s: Settings }) {
+  const { t, net, lang, native } = s;
+  const x = insightDicts[lang];
+  const [idx, alerts] = await Promise.all([getIndex(net).catch(() => null), getAlerts(net, ["foundation", "inflow_spike"], 4).catch(() => [])]);
+  if (!idx) return null;
+  const now = Date.now();
+  return (
+    <div className="grid-feed">
+      <section className="card">
+        <header className="card-head">
+          <h2>{x.indexTitle}</h2>
+          <Link href="/pressure">{t.viewAll}</Link>
+        </header>
+        <div className="index-mini">
+          <Gauge score={idx.score} label={x.indexTitle} size={150} />
+          <div>
+            <div className="index-score"><bdi dir="ltr">{idx.score === null ? "—" : idx.score.toFixed(0)}</bdi><small>/100</small></div>
+            <div className={`index-band band-${idx.band ?? "none"}`}>{idx.band ? x.bands[idx.band] : x.notEnough}</div>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 11.5, margin: "6px 0 0" }}>{x.disclaimer}</p>
+      </section>
+      <section className="card">
+        <header className="card-head">
+          <h2>{x.recent}</h2>
+          <Link href="/alerts">{t.viewAll}</Link>
+        </header>
+        {alerts.length === 0 ? (
+          <p className="muted">{x.collecting}</p>
+        ) : (
+          <ul className="news">
+            {alerts.map((a) => (
+              <li key={a.id}>
+                <Link href={a.tx_hash ? `/tx/${a.tx_hash}` : "/alerts"}>
+                  {a.kind === "foundation" ? x.kindFoundation : x.kindSpike}
+                  {a.amount ? <> · <bdi dir="ltr">{compact(Number(a.amount), lang)}</bdi> {native}</> : null}
+                </Link>
+                <div className="muted">
+                  {a.kind === "foundation" ? x.dest[String(a.meta?.dest ?? "unknown")] ?? x.dest.unknown : null}
+                  {a.kind === "foundation" ? " · " : null}
+                  <span suppressHydrationWarning>{timeAgo(a.at, now, lang)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
 }

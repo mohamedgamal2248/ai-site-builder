@@ -109,3 +109,52 @@ alter table wallet_flows_daily enable row level security;
 alter table wallet_balances enable row level security;
 alter table holders enable row level security;
 alter table push_subscriptions enable row level security;
+
+-- Hourly totals for the pressure index: Pi into/out of exchanges, foundation outflows, large deposits.
+create table if not exists flows_hourly (
+  net           text not null,
+  hour          timestamptz not null,
+  exch_in       numeric(30, 7) not null default 0,
+  exch_out      numeric(30, 7) not null default 0,
+  found_out     numeric(30, 7) not null default 0,
+  found_to_exch numeric(30, 7) not null default 0,
+  large_in_n    integer not null default 0,
+  primary key (net, hour)
+);
+
+-- One row per hour: market snapshot, top-holder total and the computed index.
+create table if not exists signals_hourly (
+  net        text not null,
+  hour       timestamptz not null,
+  price      numeric(20, 8),
+  volume_pi  numeric(30, 7),
+  book_bid   numeric(30, 7),
+  book_ask   numeric(30, 7),
+  top_sum    numeric(30, 7),
+  score      numeric(6, 2),
+  components jsonb,
+  primary key (net, hour)
+);
+
+-- Notable events: foundation movements, unusual exchange inflows.
+create table if not exists alerts (
+  net      text not null,
+  id       text not null,
+  kind     text not null,
+  at       timestamptz not null,
+  amount   numeric(30, 7),
+  from_acc text,
+  to_acc   text,
+  tx_hash  text,
+  meta     jsonb not null default '{}',
+  pushed   boolean not null default false,
+  primary key (net, id)
+);
+create index if not exists alerts_time on alerts (net, at desc);
+
+alter table push_subscriptions add column if not exists rules jsonb not null default '[]';
+alter table push_subscriptions add column if not exists rule_state jsonb not null default '{}';
+
+alter table flows_hourly enable row level security;
+alter table signals_hourly enable row level security;
+alter table alerts enable row level security;
