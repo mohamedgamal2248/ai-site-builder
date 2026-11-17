@@ -15,7 +15,7 @@ export function formatAmount(value: string | number | undefined, max = 7): strin
 export function compact(value: string | number, locale = "en") {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return "—";
-  return new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en", { notation: "compact", maximumFractionDigits: 2 }).format(n);
+  return new Intl.NumberFormat(locale === "ar" ? "ar-EG-u-nu-latn" : "en", { notation: "compact", maximumFractionDigits: 2 }).format(n);
 }
 
 /** Stroops (1e-7 Pi) -> Pi string. */
@@ -49,7 +49,7 @@ export function canonicalAssetLabel(canonical: string, native = "Pi") {
 
 export function timeAgo(iso: string, now = Date.now(), lang: "ar" | "en" = "en") {
   const sec = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
-  const rtf = new Intl.RelativeTimeFormat(lang === "ar" ? "ar-EG" : "en", { numeric: "auto" });
+  const rtf = new Intl.RelativeTimeFormat(lang === "ar" ? "ar-EG-u-nu-latn" : "en", { numeric: "auto" });
   if (sec < 60) return rtf.format(-sec, "second");
   const min = Math.round(sec / 60);
   if (min < 60) return rtf.format(-min, "minute");
@@ -59,7 +59,7 @@ export function timeAgo(iso: string, now = Date.now(), lang: "ar" | "en" = "en")
 }
 
 export function formatDate(iso: string, lang: "ar" | "en" = "en") {
-  return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", {
+  return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG-u-nu-latn" : "en-GB", {
     dateStyle: "medium",
     timeStyle: "medium",
     timeZone: "UTC",

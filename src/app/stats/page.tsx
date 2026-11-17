@@ -20,7 +20,7 @@ export default async function Stats() {
     );
   }
   const [rows, sync] = await Promise.all([getDaily(net, 30), getSync(net)]);
-  const locale = lang === "ar" ? "ar-EG" : "en";
+  const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en";
   const short = (d: string) => d.slice(5).replace("-", "/");
   const last = sync.find((s) => s.stream === "operations")?.updated_at;
 

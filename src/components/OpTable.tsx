@@ -14,7 +14,7 @@ export function OpTable({ rows, s, showTx = true }: { rows: Operation[]; s: Sett
       empty={t.noRecords}
       columns={[
         { label: t.type, cell: (o) => <strong>{opNames[lang][o.type] ?? o.type}</strong> },
-        { label: t.details, cell: (o) => <OpSummary parts={summarize(o, lang, native)} /> },
+        { label: t.details, cell: (o) => <OpSummary parts={summarize(o, lang, native)} />, className: "wide" },
         ...(showTx ? [{ label: t.transaction, cell: (o: Operation) => <TxLink hash={o.transaction_hash} /> }] : []),
         { label: t.status, cell: (o) => <Status ok={o.transaction_successful} labels={t} /> },
         { label: t.time, cell: (o) => formatDate(o.created_at, lang) },

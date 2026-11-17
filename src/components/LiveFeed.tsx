@@ -63,7 +63,7 @@ export function LiveFeed({ initial, labels, lang, native }: { initial: Latest; l
       <section className="card">
         <header className="card-head">
           <h2>{labels.latestBlocks}</h2>
-          <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <span className="head-actions">
             {status}
             <Link href="/blocks">{labels.viewAll}</Link>
           </span>
@@ -71,6 +71,12 @@ export function LiveFeed({ initial, labels, lang, native }: { initial: Latest; l
         <ul className="rows">
           {data.ledgers.map((l) => (
             <li key={l.sequence} className={fresh.has(l.sequence) ? "flash" : undefined}>
+              <span className="row-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                  <path d="M12 3 4 7.5v9L12 21l8-4.5v-9L12 3Z" />
+                  <path d="M4 7.5 12 12l8-4.5M12 12v9" />
+                </svg>
+              </span>
               <div className="main-col">
                 <Link href={`/blocks/${l.sequence}`}>
                   <bdi className="mono" dir="ltr">#{l.sequence.toLocaleString("en")}</bdi>
@@ -90,7 +96,7 @@ export function LiveFeed({ initial, labels, lang, native }: { initial: Latest; l
       <section className="card">
         <header className="card-head">
           <h2>{labels.latestTxs}</h2>
-          <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <span className="head-actions">
             {status}
             <Link href="/txs">{labels.viewAll}</Link>
           </span>
@@ -98,6 +104,11 @@ export function LiveFeed({ initial, labels, lang, native }: { initial: Latest; l
         <ul className="rows">
           {data.txs.map((t) => (
             <li key={t.hash}>
+              <span className="row-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 8h13l-3-3M20 16H7l3 3" />
+                </svg>
+              </span>
               <div className="main-col">
                 <Link href={`/tx/${t.hash}`}>
                   <bdi className="mono" dir="ltr">{shortId(t.hash, 8, 8)}</bdi>

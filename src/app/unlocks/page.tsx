@@ -26,7 +26,7 @@ export default async function Unlocks() {
     horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
   ]);
   const progress = backfillProgress(sync.find((s) => s.stream === "claimable")?.cursor, ledger.sequence);
-  const locale = lang === "ar" ? "ar-EG" : "en";
+  const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en";
 
   return (
     <>
