@@ -1,10 +1,9 @@
 name: Ingest Pi statistics
 
-# Keeps the statistics tables fresh. Needs the repository secret DATABASE_URL
-# (Settings → Secrets and variables → Actions). GitHub may delay scheduled runs by a few minutes.
+# Manual backfill / catch-up run. The regular schedule lives in Supabase (pg_cron calls
+# /api/cron/ingest every 5 minutes). Needs the repository secret DATABASE_URL set to the
+# Supabase transaction pooler URL (port 6543).
 on:
-  schedule:
-    - cron: "*/10 * * * *"
   workflow_dispatch:
     inputs:
       budget:
