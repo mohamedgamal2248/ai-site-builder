@@ -5,7 +5,9 @@ import { Amount, Card, DataTable, PageTitle } from "@/components/ui";
 import { compact, formatAmount } from "@/lib/format";
 import { horizon } from "@/lib/horizon";
 import { getSettings } from "@/lib/settings";
-import { backfillProgress, getSync, getUnlocks, statsEnabled, type UnlockMonth } from "@/lib/stats";
+import { AccountLink } from "@/components/ui";
+import { formatDate } from "@/lib/format";
+import { backfillProgress, getSync, getTopLocked, getUnlocks, statsEnabled, type LockedHolder, type UnlockMonth } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Unlock schedule" };
@@ -20,10 +22,11 @@ export default async function Unlocks() {
       </>
     );
   }
-  const [u, sync, ledger] = await Promise.all([
+  const [u, sync, ledger, top] = await Promise.all([
     getUnlocks(net, 24),
     getSync(net),
     horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
+    getTopLocked(net, 25),
   ]);
   const progress = backfillProgress(sync.find((s) => s.stream === "claimable")?.cursor, ledger.sequence);
   const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en";
@@ -69,6 +72,20 @@ export default async function Unlocks() {
             { label: t.month, cell: (m) => <bdi dir="ltr">{m.month}</bdi> },
             { label: t.amount, cell: (m) => <Amount value={Number(m.amount).toFixed(0)} asset={native} />, className: "num" },
             { label: t.lockupsCount, cell: (m) => m.count.toLocaleString("en"), className: "num" },
+          ]}
+        />
+      </Card>
+      <Card title={t.topLocked}>
+        <p className="muted" style={{ marginTop: 0 }}>{t.topLockedNote}</p>
+        <DataTable<LockedHolder>
+          rows={top}
+          rowKey={(h) => h.claimant}
+          empty={t.noRecords}
+          columns={[
+            { label: t.holder, cell: (h) => <AccountLink id={h.claimant} /> },
+            { label: t.amount, cell: (h) => <Amount value={Number(h.amount).toFixed(0)} asset={native} />, className: "num" },
+            { label: t.lockupsCount, cell: (h) => h.count.toLocaleString("en"), className: "num" },
+            { label: t.unlocksAt, cell: (h) => (h.next_unlock ? formatDate(h.next_unlock, lang) : "—") },
           ]}
         />
       </Card>

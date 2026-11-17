@@ -25,7 +25,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const s = await getSettings();
   return (
-    <html lang={s.lang} dir={s.lang === "ar" ? "rtl" : "ltr"}>
+    <html lang={s.lang} dir={s.lang === "ar" ? "rtl" : "ltr"} data-theme={s.theme === "auto" ? undefined : s.theme}>
       <body className={s.net === "testnet" ? "is-testnet" : undefined}>
         <Header s={s} />
         <main className="container main">{children}</main>

@@ -1,59 +1,71 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { LiveFeed } from "@/components/LiveFeed";
+import { LoadMeter, Sparkline } from "@/components/Sparkline";
 import { compact, formatAmount, stroopsToPi, timeAgo } from "@/lib/format";
 import { horizon } from "@/lib/horizon";
 import { getLatest } from "@/lib/latest";
-import { getPiPrice } from "@/lib/price";
+import { getMarket, getPiPrice } from "@/lib/price";
 import { getSettings } from "@/lib/settings";
+import { getDaily, statsEnabled } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const s = await getSettings();
   const { t, net, lang, native } = s;
-  const [latest, ledger, fees, price] = await Promise.all([
-    getLatest(net),
+  const main = net === "mainnet";
+  const [latest, ledger, fees, price, market, today] = await Promise.all([
+    getLatest(net, native),
     horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
     horizon.feeStats(net).catch(() => null),
-    net === "mainnet" ? getPiPrice() : Promise.resolve(null),
+    main ? getPiPrice() : Promise.resolve(null),
+    main ? getMarket() : Promise.resolve(null),
+    statsEnabled() ? getDaily(net, 1).then((r) => r[0] ?? null).catch(() => null) : Promise.resolve(null),
   ]);
 
-  const blockHero = (
-    <div className="hero-block">
-      <div className="k">{t.latestBlock}</div>
-      <div className="v sub-v">
+  const usd = (n: number) => `$${compact(n, lang)}`;
+  const txs = latest.spark.map((p) => p.txs);
+  const secs = latest.spark.map((p) => p.secs);
+  const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+  const load = fees ? Math.round(Number(fees.ledger_capacity_usage) * 100) : null;
+  const unit = <span className="unit"> {native}</span>;
+
+  const stats: { label: string; value: ReactNode; hint?: ReactNode; extra?: ReactNode }[] = [
+    {
+      label: t.latestBlock,
+      value: (
         <Link href={`/blocks/${ledger.sequence}`}>
           <bdi dir="ltr">#{ledger.sequence.toLocaleString("en")}</bdi>
         </Link>
-      </div>
-      <div className="s" suppressHydrationWarning>{timeAgo(ledger.closed_at, Date.now(), lang)}</div>
-    </div>
-  );
-  const supplyHero = (
-    <div className="hero-block">
-      <div className="k">{t.totalSupply}</div>
-      <div className="v sub-v">
-        <bdi dir="ltr">{compact(ledger.total_coins, lang)}</bdi>
-      </div>
-      <div className="s">
-        <bdi dir="ltr">{formatAmount(ledger.total_coins, 0)}</bdi> {native}
-      </div>
-    </div>
-  );
-
-  const unit = <span className="unit"> {native}</span>;
-  const stats: { label: string; value: ReactNode; hint?: ReactNode }[] = [
-    { label: t.feePool, value: <><bdi dir="ltr">{compact(ledger.fee_pool, lang)}</bdi>{unit}</> },
-    { label: t.baseFee, value: <><bdi dir="ltr">{stroopsToPi(ledger.base_fee_in_stroops)}</bdi>{unit}</> },
-    { label: t.feeMode, value: <><bdi dir="ltr">{fees ? stroopsToPi(fees.fee_charged.mode) : "—"}</bdi>{unit}</> },
-    { label: t.baseReserve, value: <><bdi dir="ltr">{stroopsToPi(ledger.base_reserve_in_stroops)}</bdi>{unit}</> },
-    {
-      label: t.capacity,
-      value: <bdi dir="ltr">{fees ? `${Math.round(Number(fees.ledger_capacity_usage) * 100)}%` : "—"}</bdi>,
-      hint: `${ledger.operation_count} ${t.ops}`,
+      ),
+      hint: <span suppressHydrationWarning>{timeAgo(ledger.closed_at, Date.now(), lang)}</span>,
     },
-    { label: t.protocol, value: <bdi dir="ltr">v{ledger.protocol_version}</bdi>, hint: net === "mainnet" ? t.mainnet : t.testnet },
+    {
+      label: t.txPerBlock,
+      value: <bdi dir="ltr">{avg(txs).toFixed(1)}</bdi>,
+      hint: `${t.peak} ${Math.max(0, ...txs)} · ${t.last50}`,
+      extra: <Sparkline values={txs} label={`${t.txPerBlock}, ${t.last50}`} />,
+    },
+    {
+      label: t.blockTime,
+      value: <bdi dir="ltr">{avg(secs).toFixed(1)}{t.seconds}</bdi>,
+      hint: `${t.avg} · ${t.last50}`,
+      extra: <Sparkline values={secs} label={`${t.blockTime}, ${t.last50}`} />,
+    },
+    {
+      label: t.networkLoad,
+      value: load === null ? "—" : null,
+      extra: load === null ? null : <LoadMeter pct={load} labels={{ low: t.loadLow, medium: t.loadMedium, high: t.loadHigh }} />,
+    },
+    { label: t.totalSupply, value: <><bdi dir="ltr">{compact(ledger.total_coins, lang)}</bdi>{unit}</>, hint: <bdi dir="ltr">{formatAmount(ledger.total_coins, 0)}</bdi> },
+    { label: t.feePool, value: <><bdi dir="ltr">{compact(ledger.fee_pool, lang)}</bdi>{unit}</> },
+    {
+      label: t.baseFee,
+      value: <><bdi dir="ltr">{stroopsToPi(ledger.base_fee_in_stroops)}</bdi>{unit}</>,
+      hint: <>{t.baseReserve} <bdi dir="ltr">{stroopsToPi(ledger.base_reserve_in_stroops)}</bdi></>,
+    },
+    { label: t.protocol, value: <bdi dir="ltr">v{ledger.protocol_version}</bdi>, hint: main ? t.mainnet : t.testnet },
   ];
 
   return (
@@ -77,41 +89,65 @@ export default async function Home() {
             </div>
           </div>
         ) : (
-          blockHero
+          <div className="hero-block">
+            <div className="k">{t.latestBlock}</div>
+            <div className="v">
+              <bdi dir="ltr">#{ledger.sequence.toLocaleString("en")}</bdi>
+            </div>
+            <div className="s">{main ? t.mainnet : t.testnet}</div>
+          </div>
         )}
         <div className="hero-row">
-          {price ? blockHero : null}
-          {supplyHero}
+          {market ? (
+            <>
+              <div className="hero-block">
+                <div className="k">{t.marketCap}</div>
+                <div className="v sub-v"><bdi dir="ltr">{usd(market.marketCap)}</bdi></div>
+                <div className="s">{market.rank ? <>{t.rank} <bdi dir="ltr">#{market.rank}</bdi> · </> : null}{t.marketSource}</div>
+              </div>
+              <div className="hero-block">
+                <div className="k">{t.circulating}</div>
+                <div className="v sub-v"><bdi dir="ltr">{compact(market.circulating, lang)}</bdi> <small>{native}</small></div>
+                <div className="s">{t.volume24h}: <bdi dir="ltr">{usd(market.totalVolume)}</bdi></div>
+              </div>
+            </>
+          ) : (
+            <div className="hero-block">
+              <div className="k">{t.totalSupply}</div>
+              <div className="v sub-v"><bdi dir="ltr">{compact(ledger.total_coins, lang)}</bdi> <small>{native}</small></div>
+            </div>
+          )}
         </div>
       </section>
 
-      <div className="stats six">
+      <div className="stats eight">
         {stats.map((st) => (
           <div className="stat" key={st.label}>
             <div className="label">{st.label}</div>
-            <div className="value">{st.value}</div>
+            {st.value !== null ? <div className="value">{st.value}</div> : null}
+            {st.extra}
             {st.hint ? <div className="hint">{st.hint}</div> : null}
           </div>
         ))}
       </div>
 
-      <LiveFeed
-        initial={latest}
-        lang={lang}
-        native={native}
-        labels={{
-          latestBlocks: t.latestBlocks,
-          latestTxs: t.latestTxs,
-          viewAll: t.viewAll,
-          live: t.live,
-          paused: t.paused,
-          txs: t.txs,
-          ops: t.ops,
-          failed: t.failed,
-          block: t.block,
-          fee: t.fee,
-        }}
-      />
+      {today ? (
+        <section className="card today">
+          <header className="card-head">
+            <h2>{t.today}</h2>
+            <Link href="/stats">{t.viewAll}</Link>
+          </header>
+          <div className="today-grid">
+            <div><span>{t.transactions}</span><strong><bdi dir="ltr">{today.txs.toLocaleString("en")}</bdi></strong></div>
+            <div><span>{t.payments}</span><strong><bdi dir="ltr">{today.payments.toLocaleString("en")}</bdi></strong></div>
+            <div><span>{t.volume}</span><strong><bdi dir="ltr">{compact(today.payment_volume, lang)}</bdi> <small>{native}</small></strong></div>
+            <div><span>{t.newAccounts}</span><strong><bdi dir="ltr">{today.new_accounts.toLocaleString("en")}</bdi></strong></div>
+            <div><span>{t.failedTx}</span><strong><bdi dir="ltr">{today.failed_txs.toLocaleString("en")}</bdi></strong></div>
+          </div>
+        </section>
+      ) : null}
+
+      <LiveFeed initial={latest} t={t} lang={lang} />
       <p className="muted" style={{ fontSize: 12.5 }}>{t.apiNote}</p>
     </>
   );

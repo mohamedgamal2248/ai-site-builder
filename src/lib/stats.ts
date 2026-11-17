@@ -130,3 +130,51 @@ export function backfillProgress(cursor: string | undefined, latestLedger: numbe
   if (!Number.isFinite(ledger) || ledger <= 0 || !latestLedger) return 0;
   return Math.min(100, (ledger / latestLedger) * 100);
 }
+
+export interface LockedHolder {
+  claimant: string;
+  amount: string;
+  count: number;
+  next_unlock: string | null;
+}
+
+/** Accounts with the most native Pi still locked (from indexed lockups). */
+export function getTopLocked(net: Network, limit = 25) {
+  return cached(`toplocked:${net}:${limit}`, 5 * 60_000, async () => {
+    const sql = getDb()!;
+    return sql<LockedHolder[]>`
+      select claimant, sum(amount)::text as amount, count(*)::int as count,
+             to_char(min(unlock_at) at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as next_unlock
+      from lockups
+      where net = ${net} and claimed_at is null and unlock_at > now() and claimant is not null
+      group by claimant
+      order by sum(amount) desc
+      limit ${limit}`;
+  });
+}
+
+/** Rolls daily rows into weeks or months so long ranges stay readable. */
+export function bucketDaily(rows: DailyRow[], size: "day" | "week" | "month"): DailyRow[] {
+  if (size === "day") return rows;
+  const out = new Map<string, DailyRow>();
+  for (const r of rows) {
+    const d = new Date(`${r.day}T00:00:00Z`);
+    let key: string;
+    if (size === "month") key = r.day.slice(0, 7);
+    else {
+      const monday = new Date(d);
+      monday.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+      key = monday.toISOString().slice(0, 10);
+    }
+    const b = out.get(key);
+    if (!b) out.set(key, { ...r, day: key });
+    else {
+      b.ledgers += r.ledgers; b.txs += r.txs; b.failed_txs += r.failed_txs; b.ops += r.ops; b.payments += r.payments;
+      b.payment_volume = (Number(b.payment_volume) + Number(r.payment_volume)).toFixed(7);
+      b.new_accounts += r.new_accounts; b.locks_created += r.locks_created;
+      b.locked_amount = (Number(b.locked_amount) + Number(r.locked_amount)).toFixed(7);
+      b.claims += r.claims;
+    }
+  }
+  return [...out.values()];
+}

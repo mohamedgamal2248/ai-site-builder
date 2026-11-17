@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import QRCode from "qrcode";
+import { WatchButton } from "@/components/WatchButton";
+import { knownWallets } from "@/data/wallets";
 import { OpTable } from "@/components/OpTable";
 import { TxTable } from "@/components/TxTable";
-import { AccountLink, Amount, Card, Copyable, DataTable, Facts, PageTitle, Pager } from "@/components/ui";
+import { AccountLink, Amount, Card, Copyable, DataTable, Facts, Pager } from "@/components/ui";
 import { assetLabel, canonicalAssetLabel, expiryTime, formatAmount, formatDate, lockOwner, shortId, unlockTime } from "@/lib/format";
 import type { SearchParams } from "@/lib/found";
 import { horizon, HorizonError, type Account, type Balance, type ClaimableBalance } from "@/lib/horizon";
@@ -31,7 +34,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
   const id = raw.toUpperCase();
   if (!/^G[A-Z2-7]{55}$/.test(id)) notFound();
   const sp = await searchParams;
-  const tab = sp.tab === "txs" ? "txs" : "ops";
+  const tab = sp.tab === "txs" ? "txs" : sp.tab === "locks" ? "locks" : "ops";
   const pp = readPageParams(sp);
 
   const accountP = horizon.account(net, id).catch((e) => {
@@ -42,7 +45,9 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
     accountP,
     horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
     horizon.accountClaimable(net, id).catch(() => ({ records: [] as ClaimableBalance[] })),
-    tab === "txs"
+    tab === "locks"
+      ? Promise.resolve(null)
+      : tab === "txs"
       ? paged((q) => horizon.accountTransactions(net, id, q), pp, 20).then((p) => ({ kind: "txs" as const, ...p }))
       : paged((q) => horizon.accountOperations(net, id, q), pp, 20).then((p) => ({ kind: "ops" as const, ...p })),
   ]).catch((e) => {
@@ -50,6 +55,13 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
     throw e;
   });
 
+  const qr = await QRCode.toString(id, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
+  const known = knownWallets.find((w) => w.address === id);
+  const tabs: [string, string, string][] = [
+    ["ops", t.operations, `/account/${id}`],
+    ["txs", t.transactions, `/account/${id}?tab=txs`],
+    ["locks", `${t.tabLocks} (${locked.records.length})`, `/account/${id}?tab=locks`],
+  ];
   const nativeBal = account?.balances.find((b) => b.asset_type === "native");
   const reserved = account && ledger ? reservedPi(account, ledger.base_reserve_in_stroops) : 0;
   const lockedTotal = locked.records
@@ -58,7 +70,17 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
 
   return (
     <>
-      <PageTitle title={t.account} sub={<Copyable value={id} label={t.copy} copied={t.copied} />} />
+      <section className="card account-head">
+        <div className="account-main">
+          <div className="account-title">
+            <h1>{t.account}</h1>
+            {known ? <span className="badge neutral">{t.knownAs}: {known.label}</span> : null}
+            <WatchButton id={id} labels={{ watch: t.watch, unwatch: t.unwatch }} />
+          </div>
+          <Copyable value={id} label={t.copy} copied={t.copied} />
+        </div>
+        <div className="qr" role="img" aria-label={t.qrTitle} title={t.qrTitle} dangerouslySetInnerHTML={{ __html: qr }} />
+      </section>
 
       {!account ? (
         <Card>
@@ -78,7 +100,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
               </div>
               <div className="hint">{t.reserved}: {formatAmount(reserved.toFixed(7))} {native}</div>
             </div>
-            <div className="stat">
+            <div className="stat span-mobile">
               <div className="label">{t.locked}</div>
               <div className="value"><Amount value={lockedTotal.toFixed(7)} asset={native} /></div>
               <div className="hint">{locked.records.length} {lang === "ar" ? "رصيد" : locked.records.length === 1 ? "balance" : "balances"}</div>
@@ -131,8 +153,21 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
         </>
       )}
 
-      {locked.records.length ? (
-        <Card title={t.lockedBalances}>
+      <Card>
+        <div className="tabs-row">
+          <nav className="tabs">
+            {tabs.map(([k, label, href]) => (
+              <Link key={k} href={href} className={tab === k ? "active" : undefined}>{label}</Link>
+            ))}
+          </nav>
+          {tab !== "locks" ? (
+            <a className="btn ghost small" href={`/api/export/${id}?type=${tab}`} download>
+              ⤓ {t.exportCsv}
+            </a>
+          ) : null}
+        </div>
+      {tab === "locks" ? (
+        <>
           <DataTable<ClaimableBalance>
             rows={locked.records as ClaimableBalance[]}
             rowKey={(c) => c.id}
@@ -157,19 +192,14 @@ export default async function AccountPage({ params, searchParams }: { params: Pa
               { label: t.sponsor, cell: (c) => (c.sponsor ? <AccountLink id={c.sponsor} /> : "—") },
             ]}
           />
-        </Card>
-      ) : null}
-
-      {activity ? (
-        <Card>
-          <nav className="tabs">
-            <Link href={`/account/${id}`} className={tab === "ops" ? "active" : undefined}>{t.operations}</Link>
-            <Link href={`/account/${id}?tab=txs`} className={tab === "txs" ? "active" : undefined}>{t.transactions}</Link>
-          </nav>
+        </>
+      ) : activity ? (
+        <>
           {activity.kind === "txs" ? <TxTable rows={activity.records} s={s} /> : <OpTable rows={activity.records} s={s} />}
           <Pager base={tab === "txs" ? `/account/${id}?tab=txs` : `/account/${id}`} next={activity.next} prev={activity.prev} labels={t} />
-        </Card>
+        </>
       ) : null}
+      </Card>
     </>
   );
 }

@@ -24,3 +24,34 @@ export async function getPiPrice(): Promise<Price | null> {
     return null;
   }
 }
+
+export interface Market {
+  marketCap: number;
+  rank: number | null;
+  circulating: number;
+  totalVolume: number;
+  ath: number;
+}
+
+/** Market cap, circulating supply and volume across exchanges from CoinGecko, cached for 5 minutes. */
+export async function getMarket(): Promise<Market | null> {
+  try {
+    const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=pi-network", {
+      next: { revalidate: 300 },
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const [d] = (await res.json()) as {
+      market_cap: number;
+      market_cap_rank: number | null;
+      circulating_supply: number;
+      total_volume: number;
+      ath: number;
+    }[];
+    if (!d || !Number.isFinite(d.market_cap)) return null;
+    return { marketCap: d.market_cap, rank: d.market_cap_rank, circulating: d.circulating_supply, totalVolume: d.total_volume, ath: d.ath };
+  } catch {
+    return null;
+  }
+}

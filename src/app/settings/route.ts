@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const ALLOWED: Record<string, string[]> = { lang: ["ar", "en"], net: ["mainnet", "testnet"] };
+const ALLOWED: Record<string, string[]> = { lang: ["ar", "en"], net: ["mainnet", "testnet"], theme: ["auto", "light", "dark"] };
 
 /** Switches language or network with a cookie, then returns the visitor to the page they were on. */
 export function GET(req: NextRequest) {

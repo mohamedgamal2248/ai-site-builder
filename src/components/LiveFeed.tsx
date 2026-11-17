@@ -2,28 +2,27 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { shortId, stroopsToPi, timeAgo } from "@/lib/format";
-import type { Latest } from "@/lib/latest";
-
-interface Labels {
-  latestBlocks: string;
-  latestTxs: string;
-  viewAll: string;
-  live: string;
-  paused: string;
-  txs: string;
-  ops: string;
-  failed: string;
-  block: string;
-  fee: string;
-}
+import { formatAmount, shortId, timeAgo } from "@/lib/format";
+import type { Dict } from "@/lib/i18n";
+import type { ActivityKind, Latest } from "@/lib/latest";
 
 const POLL_MS = 5000;
+const FILTERS: ("all" | ActivityKind)[] = ["all", "payment", "lock", "claim", "create"];
 
-export function LiveFeed({ initial, labels, lang, native }: { initial: Latest; labels: Labels; lang: "ar" | "en"; native: string }) {
+function Acc({ id }: { id?: string }) {
+  if (!id) return <span className="muted">—</span>;
+  return (
+    <Link href={`/account/${id}`}>
+      <bdi className="mono" dir="ltr">{shortId(id, 4, 4)}</bdi>
+    </Link>
+  );
+}
+
+export function LiveFeed({ initial, t, lang }: { initial: Latest; t: Dict; lang: "ar" | "en" }) {
   const [data, setData] = useState(initial);
   const [online, setOnline] = useState(true);
   const [now, setNow] = useState(() => Date.now());
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
   const seen = useRef(new Set(initial.ledgers.map((l) => l.sequence)));
   const [fresh, setFresh] = useState<Set<number>>(new Set());
 
@@ -56,16 +55,24 @@ export function LiveFeed({ initial, labels, lang, native }: { initial: Latest; l
     };
   }, [initial.net]);
 
-  const status = <span className={`live-dot${online ? "" : " off"}`}>{online ? labels.live : labels.paused}</span>;
+  const status = <span className={`live-dot${online ? "" : " off"}`}>{online ? t.live : t.paused}</span>;
+  const kindLabel: Record<ActivityKind, string> = {
+    payment: t.kindPayment,
+    lock: t.kindLock,
+    claim: t.kindClaim,
+    create: t.kindCreate,
+    other: t.kindOther,
+  };
+  const rows = data.activity.filter((a) => filter === "all" || a.kind === filter);
 
   return (
-    <div className="grid-2">
+    <div className="grid-feed">
       <section className="card">
         <header className="card-head">
-          <h2>{labels.latestBlocks}</h2>
+          <h2>{t.latestBlocks}</h2>
           <span className="head-actions">
             {status}
-            <Link href="/blocks">{labels.viewAll}</Link>
+            <Link href="/blocks">{t.viewAll}</Link>
           </span>
         </header>
         <ul className="rows">
@@ -85,53 +92,75 @@ export function LiveFeed({ initial, labels, lang, native }: { initial: Latest; l
               </div>
               <div className="side-col">
                 <span>
-                  {l.txs} {labels.txs} · {l.ops} {labels.ops}
+                  {l.txs} {t.txs} · {l.ops} {t.ops}
                 </span>
-                {l.failed ? <span className="meta">{l.failed} {labels.failed}</span> : null}
+                {l.failed ? <span className="meta">{l.failed} {t.failed}</span> : null}
               </div>
             </li>
           ))}
         </ul>
       </section>
+
       <section className="card">
         <header className="card-head">
-          <h2>{labels.latestTxs}</h2>
+          <h2>{t.liveActivity}</h2>
           <span className="head-actions">
             {status}
-            <Link href="/txs">{labels.viewAll}</Link>
+            <Link href="/operations">{t.viewAll}</Link>
           </span>
         </header>
-        <ul className="rows">
-          {data.txs.map((t) => (
-            <li key={t.hash}>
-              <span className="row-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 8h13l-3-3M20 16H7l3 3" />
-                </svg>
-              </span>
-              <div className="main-col">
-                <Link href={`/tx/${t.hash}`}>
-                  <bdi className="mono" dir="ltr">{shortId(t.hash, 8, 8)}</bdi>
-                </Link>
-                <span className="meta" suppressHydrationWarning>
-                  <Link href={`/account/${t.source}`}>
-                    <bdi className="mono" dir="ltr">{shortId(t.source, 5, 5)}</bdi>
-                  </Link>{" "}
-                  · {timeAgo(t.created_at, now, lang)}
-                </span>
-              </div>
-              <div className="side-col">
-                <span>
-                  {t.ops} {labels.ops}
-                  {t.ok ? null : <span className="badge bad" style={{ marginInlineStart: 6 }}>{labels.failed}</span>}
-                </span>
-                <span className="meta">
-                  {labels.fee} <bdi dir="ltr">{stroopsToPi(t.fee)}</bdi> {native}
-                </span>
-              </div>
-            </li>
+        <div className="tabs filter-tabs" role="tablist" aria-label={t.liveActivity}>
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="tab"
+              aria-selected={filter === f}
+              className={filter === f ? "active" : undefined}
+              onClick={() => setFilter(f)}
+            >
+              {f === "all" ? t.all : kindLabel[f]}
+            </button>
           ))}
-        </ul>
+        </div>
+        {rows.length === 0 ? (
+          <p className="muted empty">{t.noRecords}</p>
+        ) : (
+          <ul className="rows activity">
+            {rows.slice(0, 14).map((a) => (
+              <li key={a.id}>
+                <span className={`kind kind-${a.kind}`}>{kindLabel[a.kind]}</span>
+                <div className="main-col">
+                  <span className="flow">
+                    <Acc id={a.from} />
+                    {a.to ? (
+                      <>
+                        <span className="arrow" aria-hidden="true">{lang === "ar" ? "←" : "→"}</span>
+                        <Acc id={a.to} />
+                      </>
+                    ) : null}
+                  </span>
+                  <span className="meta" suppressHydrationWarning>
+                    <Link href={`/tx/${a.tx}`}>
+                      <bdi className="mono" dir="ltr">{shortId(a.tx, 4, 4)}</bdi>
+                    </Link>{" "}
+                    · {timeAgo(a.at, now, lang)}
+                  </span>
+                </div>
+                <div className="side-col">
+                  {a.amount ? (
+                    <span className="amount">
+                      <bdi dir="ltr" className="mono">{formatAmount(a.amount, 4)}</bdi> <span className="asset">{a.asset}</span>
+                    </span>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                  {a.ok ? null : <span className="badge bad">{t.failed}</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

@@ -4,12 +4,16 @@ import { NotConfigured } from "@/components/NotConfigured";
 import { Card, DataTable, PageTitle } from "@/components/ui";
 import { compact, formatAmount, formatDate } from "@/lib/format";
 import { getSettings } from "@/lib/settings";
-import { getDaily, getSync, statsEnabled, type DailyRow } from "@/lib/stats";
+import Link from "next/link";
+import type { SearchParams } from "@/lib/found";
+import { bucketDaily, getDaily, getSync, statsEnabled, type DailyRow } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Statistics" };
 
-export default async function Stats() {
+const RANGES = { "30d": [30, "day"], "90d": [90, "week"], "1y": [365, "month"] } as const;
+
+export default async function Stats({ searchParams }: { searchParams: SearchParams }) {
   const { t, net, lang, native } = await getSettings();
   if (!statsEnabled()) {
     return (
@@ -19,9 +23,14 @@ export default async function Stats() {
       </>
     );
   }
-  const [rows, sync] = await Promise.all([getDaily(net, 30), getSync(net)]);
+  const sp = await searchParams;
+  const range = (typeof sp.range === "string" && sp.range in RANGES ? sp.range : "30d") as keyof typeof RANGES;
+  const [days, bucket] = RANGES[range];
+  const [daily, sync] = await Promise.all([getDaily(net, days), getSync(net)]);
+  const rows = bucketDaily(daily, bucket);
+  const rangeLabels = { "30d": t.range30d, "90d": t.range90d, "1y": t.range1y };
   const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en";
-  const short = (d: string) => d.slice(5).replace("-", "/");
+  const short = (d: string) => (bucket === "month" ? d.slice(2, 7).replace("-", "/") : d.slice(5).replace("-", "/"));
   const last = sync.find((s) => s.stream === "operations")?.updated_at;
 
   const charts: { title: string; pick: (r: DailyRow) => number; fmt: (r: DailyRow) => string }[] = [
@@ -34,6 +43,13 @@ export default async function Stats() {
   return (
     <>
       <PageTitle title={t.stats} sub={last ? `${t.syncedAt}: ${formatDate(last, lang)}` : undefined} />
+      <nav className="tabs range-tabs" aria-label={t.range}>
+        {(Object.keys(RANGES) as (keyof typeof RANGES)[]).map((r) => (
+          <Link key={r} href={r === "30d" ? "/stats" : `/stats?range=${r}`} className={r === range ? "active" : undefined}>
+            {rangeLabels[r]}
+          </Link>
+        ))}
+      </nav>
       <p className="muted">{t.last30}</p>
       {rows.length === 0 ? (
         <Card><p className="muted">{t.noRecords}</p></Card>
