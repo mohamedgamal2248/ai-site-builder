@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Card, PageTitle } from "@/components/ui";
 import { guideBySlug, guides } from "@/data/guides";
 import { parseSegment, getSettings } from "@/lib/settings";
+import { langAlternates } from "@/lib/seo";
 
 export const revalidate = 86400;
 export async function generateStaticParams() {
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const g = guideBySlug(slug);
   if (!g) return { title: "404" };
   const c = g[parseSegment(s).lang];
-  return { title: c.title, description: c.summary, alternates: { canonical: `/learn/${slug}` }, openGraph: { title: c.title, description: c.summary, type: "article" } };
+  return { title: c.title, description: c.summary, alternates: langAlternates(parseSegment(s).lang, `/learn/${slug}`), openGraph: { title: c.title, description: c.summary, type: "article" } };
 }
 
 export default async function GuidePage({ params }: { params: Params }) {

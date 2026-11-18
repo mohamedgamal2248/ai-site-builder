@@ -15,13 +15,19 @@ import { SupplyCard } from "@/components/SupplyCard";
 import { getMainnetSupply } from "@/lib/supply";
 import { extraDicts } from "@/lib/i18n-extra";
 import { StatsMore } from "@/components/StatsMore";
-import { getSettings, type Settings } from "@/lib/settings";
+import { getSettings, parseSegment, type Settings } from "@/lib/settings";
+import { langAlternates } from "@/lib/seo";
+import type { Metadata } from "next";
 import { getDaily, statsEnabled } from "@/lib/stats";
 import { Gauge } from "@/components/Gauge";
 import { insightDicts } from "@/lib/i18n-insights";
 import { getAlerts, getIndex } from "@/lib/insights";
 
 export const revalidate = 60;
+
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return { alternates: langAlternates(parseSegment((await params).s).lang, "/") };
+}
 
 /*
  * The page streams: each section renders as soon as its own data arrives,
@@ -31,6 +37,7 @@ export default async function Home({ params }: { params: Promise<{ s: string }> 
   const s = await getSettings(params);
   return (
     <>
+      <h1 className="sr-only">{s.t.siteName} · {s.t.tagline}</h1>
       <Suspense fallback={<div className="hero skeleton-hero" aria-hidden="true" />}>
         <Hero s={s} />
       </Suspense>

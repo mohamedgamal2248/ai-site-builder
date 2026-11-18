@@ -14,9 +14,9 @@ export function navGroups(s: Settings) {
   return [
     { label: x.group, items: insights },
     { label: t.groupChain, items: [["/blocks", t.blocks], ["/txs", t.transactions], ["/operations", t.operations]] as [string, string][] },
-    { label: t.groupStats, items: [["/stats", t.stats], ["/flows", t.flows], ["/whales", t.whales], ["/supply", t.supply], ["/unlocks", t.unlocks], ["/largest", t.largest], ["/locked", t.locked]] as [string, string][] },
+    { label: t.groupStats, items: [["/stats", t.stats], ["/flows", t.flows], ["/reserves", lang === "ar" ? "احتياطيات المنصات" : "Exchange reserves"], ["/whales", t.whales], ["/supply", t.supply], ["/unlocks", t.unlocks], ["/largest", t.largest], ["/locked", t.locked]] as [string, string][] },
     { label: t.groupTokens, items: [["/assets", t.assets], ["/pools", t.pools], ["/trades", t.trades]] as [string, string][] },
-    { label: t.groupTools, items: [["/wallets", t.wallets], ["/richlist", t.richlist], ["/watchlist", t.watchlist], ["/learn", lang === "ar" ? "تعلّم" : "Learn"], ["/widgets", lang === "ar" ? "ودجت لموقعك" : "Widget"], ["/api-docs", t.apiDocs], ["/status", t.status]] as [string, string][] },
+    { label: t.groupTools, items: [["/wallets", t.wallets], ["/richlist", t.richlist], ["/watchlist", t.watchlist], ["/compare", lang === "ar" ? "مقارنة محفظتين" : "Compare wallets"], ["/learn", lang === "ar" ? "تعلّم" : "Learn"], ["/widgets", lang === "ar" ? "ودجت لموقعك" : "Widget"], ["/api-docs", t.apiDocs], ["/status", t.status]] as [string, string][] },
   ];
 }
 
@@ -56,12 +56,12 @@ export function Header({ s }: { s: Settings }) {
             </a>
             <a className="lang-pill" href={`/settings?k=lang&v=${lang === "ar" ? "en" : "ar"}`} lang={lang === "ar" ? "en" : "ar"}>
               <span className="net-long">{t.language}</span>
-              <span className="net-short">{lang === "ar" ? "EN" : "ع"}</span>
+              <span className="net-short" dir="ltr">{lang === "ar" ? "EN" : "AR"}</span>
             </a>
           </div>
         </div>
       </header>
-      <nav className="main-nav" aria-label="Main">
+      <nav className="main-nav" aria-label={lang === "ar" ? "القائمة الرئيسية" : "Main"}>
         <NavMenu home={t.home} groups={groups} quick={quick} labels={{ menu: t.menu, close: t.close }} />
       </nav>
     </>

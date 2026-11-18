@@ -17,6 +17,9 @@ export function GET(req: NextRequest) {
       /* ignore bad referer */
     }
   }
+  // The /ar/… copy of a page always shows Arabic, so a language switch returns to the plain address.
+  if (k === "lang") back = back.replace(/^\/(ar|en)(?=\/|\?|$)/, "") || "/";
+  if (!back.startsWith("/")) back = `/${back}`;
   // Switching network makes ledger/tx/account pages meaningless, so go home.
   if (k === "net") back = "/";
 

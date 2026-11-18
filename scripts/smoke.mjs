@@ -3,7 +3,7 @@
 import { chromium, devices } from "playwright";
 
 const SITE = (process.env.SITE || "https://blockchainpi.vercel.app").replace(/\/$/, "");
-const PAGES = ["/", "/blocks", "/txs", "/stats", "/pressure", "/whales", "/unlocks", "/report", "/learn", "/news"];
+const PAGES = ["/", "/ar", "/reserves", "/compare", "/watchlist", "/blocks", "/txs", "/stats", "/pressure", "/whales", "/unlocks", "/report", "/learn", "/news"];
 const failures = [];
 
 async function status(path) {
@@ -11,7 +11,7 @@ async function status(path) {
   return r.status;
 }
 
-for (const [path, want] of [["/", 200], ["/this-page-does-not-exist", 404], ["/tx/zzz", 404], ["/sitemap.xml", 200], ["/api/v1/index", 200]]) {
+for (const [path, want] of [["/", 200], ["/this-page-does-not-exist", 404], ["/tx/zzz", 404], ["/sitemap.xml", 200], ["/en/blocks", 308], ["/api/v1/index", 200]]) {
   const got = await status(path);
   if (got !== want) failures.push(`${path}: expected ${want}, got ${got}`);
 }

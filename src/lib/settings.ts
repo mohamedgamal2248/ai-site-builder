@@ -7,7 +7,7 @@ import type { Network } from "./horizon";
  * combination is its own cached static page on the CDN while visible URLs stay the same.
  */
 export const BASE_SEGMENTS = ["ar-main", "en-main", "ar-test", "en-test"] as const;
-export const QUERY_KEYS = ["cursor", "dir", "code", "min", "muxed", "range", "tab", "type"] as const;
+export const QUERY_KEYS = ["a", "b", "cursor", "dir", "code", "min", "muxed", "range", "tab", "type"] as const;
 
 export type Theme = "auto" | "light" | "dark";
 export type Query = Record<string, string | undefined>;

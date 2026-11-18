@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Footer, Header, navGroups } from "@/components/Header";
 import { CommandPalette } from "@/components/CommandPalette";
-import { ErrorReporter } from "@/components/ErrorReporter";
+import { EARLY_ERRORS, ErrorReporter } from "@/components/ErrorReporter";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { extraDicts } from "@/lib/i18n-extra";
 import { notFound } from "next/navigation";
@@ -54,7 +54,7 @@ export const viewport: Viewport = {
 
 // Vercel Web Analytics (cookie-free page views and countries), loaded straight from Vercel's
 // own path on this domain. Only on Vercel, so local runs and tests are not counted.
-const ANALYTICS = process.env.VERCEL ? "window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};" : "";
+const ANALYTICS = process.env.VERCEL ? "window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments)};" : "";
 
 const SITE = process.env.SITE_URL || "https://blockchainpi.vercel.app";
 /** Site-wide structured data: lets Google show the site name and a search box for it. */
@@ -82,15 +82,18 @@ export default async function RootLayout({ children, params }: { children: React
   return (
     <html lang={s.lang} dir={s.lang === "ar" ? "rtl" : "ltr"} className={plex.variable} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + ANALYTICS }} />
+        <script dangerouslySetInnerHTML={{ __html: EARLY_ERRORS + THEME_SCRIPT + ANALYTICS }} />
         {ANALYTICS ? <script defer src="/_vercel/insights/script.js" /> : null}
+        {/* Vercel Speed Insights: real visitors' load times (Core Web Vitals) per page. */}
+        {ANALYTICS ? <script defer src="/_vercel/speed-insights/script.js" /> : null}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd(s.lang)) }} />
       </head>
       <body className={s.net === "testnet" ? "is-testnet" : undefined}>
+        <a className="skip-link" href="#main">{s.lang === "ar" ? "اتنقل للمحتوى" : "Skip to content"}</a>
         <NavProgress />
         <QueryProvider>
           <Header s={s} />
-          <main className="container main">{children}</main>
+          <main id="main" tabIndex={-1} className="container main">{children}</main>
         </QueryProvider>
         <Footer s={s} />
         <BottomNav labels={{ home: s.t.home, index: insightDicts[s.lang].indexShort, watch: s.lang === "ar" ? "متابعاتي" : "Watching", unlocks: s.lang === "ar" ? "فك القفل" : "Unlocks", menu: s.t.menu }} />

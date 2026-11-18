@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *    per visit). Only known query keys are kept, so tracking tags cannot split the cache.
  * 2. Public JSON API: light rate limit (60 requests a minute per IP, per instance).
  */
-const KEYS = new Set(["cursor", "dir", "code", "min", "muxed", "range", "tab", "type"]);
+const KEYS = new Set(["a", "b", "cursor", "dir", "code", "min", "muxed", "range", "tab", "type"]);
 const SEG = /^(ar|en)-(main|test)(~|$)/;
 
 const WINDOW = 60_000;
@@ -56,7 +56,19 @@ export function middleware(req: NextRequest) {
   }
   if (SEG.test(decoded)) return NextResponse.next();
 
-  const lang = req.cookies.get("lang")?.value === "en" ? "en" : "ar";
+  // English is the default. A saved choice (the lang cookie) wins; /ar/… is the Arabic copy of
+  // every page (what search engines index), and /en/… simply forwards to the plain address.
+  const saved = req.cookies.get("lang")?.value;
+  if (first === "en") {
+    const to = req.nextUrl.clone();
+    to.pathname = pathname.slice(3) || "/";
+    const r = NextResponse.redirect(to, 308);
+    if (!saved) r.cookies.set("lang", "en", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+    return r;
+  }
+  const arPath = first === "ar";
+  const rest = arPath ? pathname.slice(3) || "/" : pathname;
+  const lang = arPath || saved === "ar" ? "ar" : "en";
   const net = req.cookies.get("net")?.value === "testnet" ? "test" : "main";
   const q = new URLSearchParams();
   for (const [k, v] of searchParams) if (KEYS.has(k) && v && v.length <= 120 && !q.has(k)) q.set(k, v);
@@ -65,8 +77,11 @@ export function middleware(req: NextRequest) {
   const seg = `${lang}-${net}${qs ? `~${qs}` : ""}`;
 
   const url = req.nextUrl.clone();
-  url.pathname = `/${encodeURIComponent(seg)}${pathname === "/" ? "" : pathname}`;
-  return NextResponse.rewrite(url);
+  url.pathname = `/${encodeURIComponent(seg)}${rest === "/" ? "" : rest}`;
+  const res = NextResponse.rewrite(url);
+  // Someone arriving on an Arabic link with no saved choice keeps Arabic as they browse on.
+  if (arPath && !saved) res.cookies.set("lang", "ar", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  return res;
 }
 
 // Real files (public/ and generated metadata files) are left alone; any other path, including a

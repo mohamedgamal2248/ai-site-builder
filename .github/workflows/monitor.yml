@@ -1,0 +1,71 @@
+name: Uptime monitor
+
+# Every 30 minutes: checks the live site and /api/health. If the site, Pi Horizon, the database
+# or the indexer is down twice in a row (a minute apart), it opens an "outage" issue, which
+# GitHub sends to the repository owner by email and to the GitHub mobile app. When everything
+# is healthy again, it comments and closes the issue.
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SITE: https://blockchainpi.vercel.app
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check
+        id: check
+        shell: bash
+        run: |
+          probe() {
+            local home code body bad
+            home=$(curl -s -o /dev/null -w '%{http_code}' --max-time 25 "$SITE/" || echo 000)
+            body=$(curl -s --max-time 25 "$SITE/api/health" || echo '{}')
+            bad=$(echo "$body" | jq -r '[.checks[]? | select(.state=="down") | select(.name|test("Horizon|Database|Indexer")) | "\(.name): \(.detail // "down")"] | join("; ")' 2>/dev/null || echo "health endpoint unreadable")
+            [ -z "$body" ] || [ "$body" = "{}" ] && bad="health endpoint did not answer"
+            [ "$home" != "200" ] && bad="home page returned $home${bad:+; $bad}"
+            echo "$bad"
+          }
+          problem=$(probe)
+          if [ -n "$problem" ]; then
+            sleep 60
+            problem=$(probe)
+          fi
+          echo "problem=$problem" >> "$GITHUB_OUTPUT"
+          echo "Result: ${problem:-all good}"
+
+      - name: Open or update the outage issue
+        if: steps.check.outputs.problem != ''
+        shell: bash
+        env:
+          PROBLEM: ${{ steps.check.outputs.problem }}
+        run: |
+          gh label create outage --color B60205 --description "Site or data pipeline is down" --force >/dev/null
+          open=$(gh issue list --label outage --state open --json number --jq '.[0].number')
+          msg="⚠️ $(date -u '+%Y-%m-%d %H:%M UTC'): $PROBLEM"$'\n\n'"Status page: $SITE/status · Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body "$msg"
+          else
+            gh issue create --title "Blockchain Pi is down: $PROBLEM" --label outage --body "$msg"
+          fi
+          exit 1
+
+      - name: Close the outage issue on recovery
+        if: steps.check.outputs.problem == ''
+        shell: bash
+        run: |
+          for n in $(gh issue list --label outage --state open --json number --jq '.[].number' 2>/dev/null); do
+            gh issue close "$n" --comment "✅ Back to normal at $(date -u '+%Y-%m-%d %H:%M UTC')."
+          done

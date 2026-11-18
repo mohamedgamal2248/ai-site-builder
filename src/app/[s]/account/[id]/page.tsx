@@ -13,9 +13,11 @@ import { TxTable } from "@/components/TxTable";
 import { AccountLink, Amount, Card, Copyable, DataTable, Facts, Pager } from "@/components/ui";
 import { assetLabel, canonicalAssetLabel, compact, expiryTime, formatAmount, formatDate, lockOwner, shortId, unlockTime } from "@/lib/format";
 import type { SearchParams } from "@/lib/found";
-import { horizon, HorizonError, type Account, type Balance, type ClaimableBalance } from "@/lib/horizon";
+import { BalanceHistory } from "@/components/BalanceHistory";
+import { horizon, horizonHost, HorizonError, type Account, type Balance, type ClaimableBalance } from "@/lib/horizon";
 import { paged, readPageParams } from "@/lib/paging";
-import { getSettings } from "@/lib/settings";
+import { getSettings, parseSegment } from "@/lib/settings";
+import { langAlternates } from "@/lib/seo";
 
 // Rendered on first visit, then served from the CDN.
 export async function generateStaticParams() {
@@ -26,7 +28,9 @@ export const revalidate = 60;
 type Params = Promise<{ s: string; id: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
-  return { title: `Account ${shortId((await params).id, 5, 5)}` };
+  const { s, id } = await params;
+  const lang = parseSegment(s).lang;
+  return { title: `${lang === "ar" ? "حساب" : "Account"} ${shortId(id, 5, 5)}`, alternates: langAlternates(lang, `/account/${id.toUpperCase()}`) };
 }
 
 /** Pi locked by the base reserve: (2 + subentries + sponsoring − sponsored) × base reserve. */
@@ -102,6 +106,7 @@ export default async function AccountPage({ params }: { params: Params }) {
               </span>
             ) : null}
             <WatchButton id={id} labels={{ watch: t.watch, unwatch: t.unwatch }} />
+            <Link className="btn-ghost small" href={`/compare?a=${id}`}>{lang === "ar" ? "قارن" : "Compare"}</Link>
             <NickButton id={id} labels={lang === "ar" ? { name: "سمّي المحفظة", rename: "اسمها", prompt: "اسم خاص (بيتحفظ عندك بس)", save: "احفظ", remove: "امسح" } : { name: "Name this wallet", rename: "Named", prompt: "Private name (saved on this device only)", save: "Save", remove: "Remove" }} />
           </div>
           <Copyable value={id} label={t.copy} copied={t.copied} />
@@ -165,6 +170,20 @@ export default async function AccountPage({ params }: { params: Params }) {
               />
             </Card>
           ) : null}
+          <Card title={lang === "ar" ? "الرصيد مع الوقت" : "Balance over time"}>
+            <BalanceHistory
+              id={id}
+              host={horizonHost(net)}
+              balance={Number(nativeBal?.balance ?? 0)}
+              locale={lang === "ar" ? "ar-EG-u-nu-latn" : "en"}
+              ariaLabel={lang === "ar" ? "رصيد المحفظة مع الوقت" : "Wallet balance over time"}
+              labels={
+                lang === "ar"
+                  ? { loading: "بيحمّل…", empty: "مفيش حركة كفاية لرسم المنحنى.", note: "محسوب من حركة المحفظة على البلوكتشين (من غير رسوم المعاملات).", partial: "بيعرض آخر 1000 حركة بس (من غير رسوم المعاملات)." }
+                  : { loading: "Loading…", empty: "Not enough activity to draw a chart.", note: "Rebuilt from the wallet's on-chain activity (transaction fees not included).", partial: "Shows the latest 1,000 changes only (transaction fees not included)." }
+              }
+            />
+          </Card>
           {soonest ? (
             <section className="card unlock-next">
               <div>
@@ -172,7 +191,13 @@ export default async function AccountPage({ params }: { params: Params }) {
                 <div className="value"><Amount value={soonest.amount.toFixed(7)} asset={native} max={2} /></div>
                 <div className="hint">{formatDate(soonest.at, lang)}{nextUnlock.length > 1 ? ` · ${lang === "ar" ? `و${nextUnlock.length - 1} رصيد تاني بعده` : `+${nextUnlock.length - 1} more later`}` : ""}</div>
               </div>
-              <Countdown to={soonest.at} lang={lang} />
+              <div className="unlock-actions">
+                <Countdown to={soonest.at} lang={lang} />
+                <a className="btn-ghost" href={`/api/ics?id=${id}&net=${net}&lang=${lang}`} download>
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm7 7v5m-2.5-2.5h5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+                  {lang === "ar" ? "ضيف للتقويم" : "Add to calendar"}
+                </a>
+              </div>
             </section>
           ) : null}
 
@@ -224,7 +249,7 @@ export default async function AccountPage({ params }: { params: Params }) {
 
       <Card>
         <div className="tabs-row">
-          <nav className="tabs">
+          <nav className="tabs" aria-label={lang === "ar" ? "أقسام الحساب" : "Account sections"}>
             {tabs.map(([k, label, href]) => (
               <Link key={k} href={href} className={tab === k ? "active" : undefined}>{label}</Link>
             ))}

@@ -1,7 +1,16 @@
 import type { Metadata } from "next";
 import { parseSegment } from "./settings";
 
-/** Localised titles and search descriptions for each page (Arabic is the site's main language). */
+/**
+ * Each page has an English address (/path, the default) and an Arabic copy (/ar/path).
+ * Search engines get both, linked to each other, so the site shows up in either language.
+ */
+export function langAlternates(lang: "ar" | "en", path: string): NonNullable<Metadata["alternates"]> {
+  const ar = path === "/" ? "/ar" : `/ar${path}`;
+  return { canonical: lang === "ar" ? ar : path, languages: { en: path, ar, "x-default": path } };
+}
+
+/** Localised titles and search descriptions for each page. */
 const PAGES: Record<string, { ar: [string, string]; en: [string, string] }> = {
   Blocks: { ar: ["بلوكات شبكة Pi", "آخر البلوكات على بلوكتشين Pi لحظة بلحظة: رقم البلوك وعدد المعاملات والعمليات ووقت الإغلاق."], en: ["Pi Network blocks", "The latest blocks on the Pi blockchain in real time: number, transactions, operations and close time."] },
   Transactions: { ar: ["معاملات شبكة Pi", "آخر معاملات بلوكتشين Pi: الهاش والمرسل والرسوم والحالة، مع رابط لكل معاملة."], en: ["Pi Network transactions", "The latest Pi blockchain transactions: hash, sender, fee and status."] },
@@ -32,6 +41,8 @@ const PAGES: Record<string, { ar: [string, string]; en: [string, string] }> = {
   "Pi news": { ar: ["أخبار Pi Network", "آخر أخبار Pi Network من المدونة الرسمية ومواقع الأخبار، مع أحداث البلوكتشين."], en: ["Pi Network news", "The latest Pi Network news from the official blog and news sites, with on-chain events."] },
   "Network growth": { ar: ["نمو شبكة Pi", "الحسابات الجديدة والنشاط ونسبة نجاح المعاملات على شبكة Pi."], en: ["Pi Network growth", "New accounts, activity and transaction success on Pi Network."] },
   Widget: { ar: ["ودجت سعر Pi", "اعرض سعر Pi ومؤشر الضغط مباشرة في موقعك."], en: ["Pi price widget", "Show the live Pi price and pressure index on your website."] },
+  "Compare wallets": { ar: ["مقارنة محفظتين على Pi", "قارن أي محفظتين على شبكة Pi: الرصيد والمقفول والنشاط والتحويلات اللي بينهم."], en: ["Compare two Pi wallets", "Compare any two Pi wallets: balance, locked Pi, activity and the transfers between them."] },
+  "Exchange reserves": { ar: ["احتياطيات Pi في المنصات", "رصيد Pi في محافظ OKX وBitget يوم بيوم: المنصات بتجمّع ولا بتسحب؟"], en: ["Pi exchange reserves", "Pi held in OKX and Bitget wallets day by day: are exchanges filling up or draining?"] },
   Guides: { ar: ["تعلّم بلوكتشين Pi", "شروحات بسيطة: يعني إيه بلوك، وإزاي تقرا معاملة، والقفل، ومؤشر الضغط."], en: ["Learn the Pi blockchain", "Simple guides: what a block is, how to read a transaction, lockups and the pressure index."] },
 };
 
@@ -43,6 +54,6 @@ export async function pageMeta(params: Promise<{ s: string }> | { s: string }, k
     title: m[0],
     description: m[1],
     openGraph: { title: m[0], description: m[1], locale: lang === "ar" ? "ar_EG" : "en_US", type: "website" },
-    ...(path ? { alternates: { canonical: path } } : {}),
+    ...(path ? { alternates: langAlternates(lang, path) } : {}),
   };
 }
