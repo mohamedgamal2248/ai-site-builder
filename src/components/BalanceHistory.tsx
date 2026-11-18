@@ -96,7 +96,14 @@ export function BalanceHistory({ id, host, balance, locale, ariaLabel, labels }:
       {typeof state === "object" ? (
         state.points.length > 2 ? (
           <>
-            <LineChart points={state.points} decimals={2} locale={locale} timeMode="day" ariaLabel={ariaLabel} />
+            <LineChart
+              points={state.points}
+              decimals={2}
+              locale={locale}
+              // A busy wallet's last 1,000 changes can all fall on one day: label hours then.
+              timeMode={state.points[state.points.length - 1].t - state.points[0].t < 2 * 86_400_000 ? "dayhour" : "day"}
+              ariaLabel={ariaLabel}
+            />
             <p className="muted chart-note">{state.partial ? labels.partial : labels.note}</p>
           </>
         ) : (

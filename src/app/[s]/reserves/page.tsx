@@ -29,8 +29,8 @@ export default async function Reserves({ params }: { params: Promise<{ s: string
   const { lang, net, native } = await getSettings(params);
   const ar = lang === "ar";
   const L = ar
-    ? { title: "احتياطيات المنصات", sub: "رصيد Pi في محافظ المنصات المعروفة يوم بيوم. لو الاحتياطي بيزيد، يبقى Pi بيدخل المنصات (ممكن للبيع)؛ لو بيقل، الناس بتسحب.", total: "إجمالي الاحتياطي", d7: "تغيّر 7 أيام", d30: "تغيّر 30 يوم", share: "حصة كل منصة", trend: `الاحتياطي آخر ${DAYS} يوم`, daily: "صافي التغيّر اليومي", note: "محسوب من رصيد النهارده وصافي التدفقات اليومية للمحافظ المعروفة بس، فالمنصة ممكن يكون عندها محافظ تانية.", flows: "تفاصيل التدفقات", filling: "بيزيد", draining: "بيقل" }
-    : { title: "Exchange reserves", sub: "Pi held in known exchange wallets, day by day. Rising reserves mean Pi is moving onto exchanges (possibly to sell); falling reserves mean people are withdrawing.", total: "Total reserves", d7: "7-day change", d30: "30-day change", share: "Share by exchange", trend: `Reserves, last ${DAYS} days`, daily: "Daily net change", note: "Rebuilt from today's balance and the daily net flows of known wallets only; exchanges may hold other wallets too.", flows: "Flow details", filling: "rising", draining: "falling" };
+    ? { title: "احتياطيات المنصات", sub: "رصيد Pi في محافظ المنصات المعروفة يوم بيوم. لو الاحتياطي بيزيد، يبقى Pi بيدخل المنصات (ممكن للبيع)؛ لو بيقل، الناس بتسحب.", total: "إجمالي الاحتياطي", d1: "تغيّر آخر يوم", d7: "تغيّر 7 أيام", partial: "التاريخ الأقدم لسه بيتجمّع من البلوكتشين؛ معروض آخر {n} يوم متصلين بس.", d30: "تغيّر 30 يوم", share: "حصة كل منصة", trend: "الاحتياطي مع الوقت", daily: "صافي التغيّر اليومي", note: "محسوب من رصيد النهارده وصافي التدفقات اليومية للمحافظ المعروفة بس، فالمنصة ممكن يكون عندها محافظ تانية.", flows: "تفاصيل التدفقات", filling: "بيزيد", draining: "بيقل" }
+    : { title: "Exchange reserves", sub: "Pi held in known exchange wallets, day by day. Rising reserves mean Pi is moving onto exchanges (possibly to sell); falling reserves mean people are withdrawing.", total: "Total reserves", d1: "Last day change", d7: "7-day change", partial: "Older history is still being indexed; showing the last {n} continuous days only.", d30: "30-day change", share: "Share by exchange", trend: "Reserves over time", daily: "Daily net change", note: "Rebuilt from today's balance and the daily net flows of known wallets only; exchanges may hold other wallets too.", flows: "Flow details", filling: "rising", draining: "falling" };
 
   if (!statsEnabled()) {
     return (
@@ -64,13 +64,22 @@ export default async function Reserves({ params }: { params: Promise<{ s: string
     }
     return out;
   });
+  // Only trust the unbroken run of recorded days ending today: older history is still being
+  // indexed, and a gap read as "no flow" would draw a false flat line.
+  const recorded = new Set(flows.map((r) => r.day));
+  let from = days.length - 1;
+  if (!recorded.has(days[from]) && recorded.has(days[from - 1])) from--;
+  while (from > 0 && recorded.has(days[from - 1])) from--;
+  const start = Math.min(from, days.length - 2);
+  const covered = days.length - start;
   const total = days.map((_, i) => series.reduce((s, x) => s + x[i], 0));
   const now = total.at(-1) ?? 0;
-  const change = (n: number) => now - (total[total.length - 1 - n] ?? now);
+  const change = (n: number) => (n < covered ? now - total[total.length - 1 - n] : null);
   const locale = ar ? "ar-EG-u-nu-latn" : "en";
   const sign = (n: number) => `${n > 0 ? "+" : ""}${compact(n, lang)}`;
   const short = (d: string) => d.slice(5).replace("-", "/");
-  const daily = days.map((d, i) => ({ d, v: i ? total[i] - total[i - 1] : 0 })).slice(-30);
+  const daily = days.map((d, i) => ({ d, v: i ? total[i] - total[i - 1] : 0 })).slice(Math.max(start + 1, days.length - 30));
+  const win = (arr: number[]) => days.map((d, i) => ({ t: Date.parse(d), v: arr[i] })).slice(start);
 
   return (
     <>
@@ -80,18 +89,23 @@ export default async function Reserves({ params }: { params: Promise<{ s: string
           <div className="label">{L.total}</div>
           <div className="value"><bdi dir="ltr">{compact(now, lang)}</bdi> <span className="unit">{native}</span></div>
         </div>
-        {[7, 30].map((n) => (
-          <div className="stat" key={n}>
-            <div className="label">{n === 7 ? L.d7 : L.d30}</div>
-            {/* More Pi on exchanges is sell-side supply, so a rise reads as the warning colour. */}
-            <div className={`value ${change(n) > 0 ? "down" : change(n) < 0 ? "up" : ""}`}><bdi dir="ltr">{sign(change(n))}</bdi> <span className="unit">{native}</span></div>
-            <div className="hint">{change(n) > 0 ? L.filling : change(n) < 0 ? L.draining : "—"}</div>
-          </div>
-        ))}
+        {[1, 7, 30].map((n) => {
+          const c = change(n);
+          if (c === null) return null;
+          return (
+            <div className="stat" key={n}>
+              <div className="label">{n === 1 ? L.d1 : n === 7 ? L.d7 : L.d30}</div>
+              {/* More Pi on exchanges is sell-side supply, so a rise reads as the warning colour. */}
+              <div className={`value ${c > 0 ? "down" : c < 0 ? "up" : ""}`}><bdi dir="ltr">{sign(c)}</bdi> <span className="unit">{native}</span></div>
+              <div className="hint">{c > 0 ? L.filling : c < 0 ? L.draining : "—"}</div>
+            </div>
+          );
+        })}
       </div>
 
       <Card title={L.trend}>
-        <LineChart points={days.map((d, i) => ({ t: Date.parse(d), v: total[i] }))} decimals={0} locale={locale} timeMode="day" ariaLabel={L.trend} />
+        <LineChart points={win(total)} decimals={0} locale={locale} timeMode={covered <= 3 ? "dayhour" : "day"} ariaLabel={L.trend} showChange={covered > 2} />
+        {covered < DAYS ? <p className="muted chart-note">{L.partial.replace("{n}", String(covered))}</p> : null}
       </Card>
 
       <div className="grid-2">
@@ -105,6 +119,7 @@ export default async function Reserves({ params }: { params: Promise<{ s: string
           />
         </Card>
         <Card title={L.daily}>
+          {daily.length < 2 ? <p className="muted">{L.partial.replace("{n}", String(covered))}</p> : null}
           <BarChart warmPositive ariaLabel={L.daily} locale={locale} bars={daily.map((x) => ({ key: x.d, label: short(x.d), value: x.v, display: `${sign(x.v)} ${native}` }))} />
         </Card>
       </div>
@@ -113,7 +128,7 @@ export default async function Reserves({ params }: { params: Promise<{ s: string
         {exchanges.map((w, i) => (
           <Card key={w.address} title={<span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}><WalletBadge logo={w.logo} size={18} /> {ar ? w.labelAr : w.label}</span>}>
             <div className="value" style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}><bdi dir="ltr">{compact(balances[i], lang)}</bdi> <span className="unit">{native}</span></div>
-            <LineChart points={days.map((d, j) => ({ t: Date.parse(d), v: series[i][j] }))} decimals={0} locale={locale} timeMode="day" ariaLabel={`${w.label} ${L.trend}`} />
+            <LineChart points={win(series[i])} decimals={0} locale={locale} timeMode="day" ariaLabel={`${w.label} ${L.trend}`} />
           </Card>
         ))}
       </div>
