@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { classifySearch } from "@/lib/format";
+import { Logo } from "./Logo";
 
 const T = {
   ar: {
@@ -45,7 +46,7 @@ export function NotFoundView() {
     <section className="nf" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="nf-art" aria-hidden="true">
         <span>4</span>
-        <span className="nf-pi">π</span>
+        <span className="nf-pi nf-mark"><Logo size={84} className="nf-logo" /></span>
         <span>4</span>
       </div>
       <h1>{t.title}</h1>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Logo } from "./Logo";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -56,7 +57,7 @@ export function InstallPrompt({ labels }: { labels: { title: string; text: strin
   if (!show) return null;
   return (
     <div className="install" role="dialog" aria-label={labels.title}>
-      <span className="logo" aria-hidden="true">π</span>
+      <Logo size={38} />
       <div className="install-text">
         <strong>{labels.title}</strong>
         <span>{ios ? labels.ios : labels.text}</span>

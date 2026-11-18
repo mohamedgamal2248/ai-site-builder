@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       s0.lang === "ar"
         ? "مستكشف بلوكتشين Pi بالعربي: سعر Pi لحظة بلحظة، آخر البلوكات والمعاملات، تحركات الحيتان والفاونديشن والمنصات، ومؤشر ضغط Pi."
         : "Pi Network blockchain explorer: live Pi price, blocks and transactions, whale, Foundation and exchange movements, and the Pi Pressure Index.",
-    icons: { icon: "/icon.svg", apple: "/icons/icon-192.png" },
+    icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png" },
     metadataBase: new URL(process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app"),
   };
 }

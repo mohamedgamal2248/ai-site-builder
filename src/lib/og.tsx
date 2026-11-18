@@ -8,7 +8,12 @@ export function ogCard({ kicker, title, lines, cacheSeconds = 3600 }: { kicker: 
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 64, background: "linear-gradient(135deg, #3d1f8f 0%, #6b3fd4 100%)", color: "#fff", fontFamily: "sans-serif" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 18, background: "#2a1566", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, color: "#f5b83d" }}>π</div>
+          <svg width="72" height="72" viewBox="0 0 64 64">
+            <rect width="64" height="64" rx="16" fill="#2a1566" />
+            <path d="M32 13 49 22.5v19L32 51 15 41.5v-19Z" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinejoin="round" />
+            <path d="M15 22.5 32 32l17-9.5M32 32v19" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinejoin="round" strokeLinecap="round" />
+            <circle cx="32" cy="32" r="4.2" fill="#3ee0b0" />
+          </svg>
           <div style={{ fontSize: 36, fontWeight: 700 }}>Blockchain Pi</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

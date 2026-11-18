@@ -96,10 +96,7 @@ h1, h2, h3 { line-height: 1.25; margin: 0; }
 .header-top { display: flex; align-items: center; gap: 10px; padding-top: 10px; padding-bottom: 10px; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); min-width: 0; flex: 1; }
 .brand:hover { text-decoration: none; }
-.logo {
-  flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
-  background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); color: var(--gold); font: 700 20px Georgia, serif;
-}
+.logo { flex: none; display: block; border-radius: 10px; }
 .brand-text { display: flex; flex-direction: column; min-width: 0; }
 .brand-text strong { font-size: 16px; white-space: nowrap; }
 .brand-text small { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -932,3 +929,6 @@ body { font-variant-numeric: tabular-nums; letter-spacing: 0; -webkit-font-smoot
 .supply-meter-legend { display: flex; justify-content: space-between; font-size: 11.5px; margin-top: 4px; }
 .hb-val .hb-tag { margin-inline-start: 6px; }
 @media (max-width: 520px) { .hbars li { grid-template-columns: minmax(64px, 28%) minmax(0, 1fr) auto; font-size: 12.5px; } }
+
+.nf-mark { background: none; box-shadow: none; }
+.nf-logo { display: block; filter: drop-shadow(0 12px 22px color-mix(in srgb, var(--accent) 38%, transparent)); }

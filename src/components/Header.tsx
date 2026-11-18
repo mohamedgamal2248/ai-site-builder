@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Settings } from "@/lib/settings";
 import { insightDicts } from "@/lib/i18n-insights";
+import { Logo } from "./Logo";
 import { NavMenu } from "./NavMenu";
 import { SearchBox } from "./SearchBox";
 import { ThemeToggle } from "./ThemeToggle";
@@ -29,7 +30,7 @@ export function Header({ s }: { s: Settings }) {
       <header className="site-header">
         <div className="container header-top">
           <Link href="/" className="brand" aria-label={t.siteName}>
-            <span className="logo" aria-hidden="true">π</span>
+            <Logo />
             <span className="brand-text">
               <strong dir="ltr">{t.siteName}</strong>
               <small>{t.tagline}</small>
@@ -82,7 +83,7 @@ export function Footer({ s }: { s: Settings }) {
       <div className="container">
         <div className="footer-cols">
           <div className="footer-brand">
-            <span className="logo" aria-hidden="true">π</span>
+            <Logo />
             <div>
               <strong dir="ltr">{t.siteName}</strong>
               <p>{t.tagline}</p>

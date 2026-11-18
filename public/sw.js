@@ -1,5 +1,5 @@
 /* Blockchain Pi service worker: offline shell, cached static assets, push notifications. */
-const STATIC = "bp-static-v1";
+const STATIC = "bp-static-v2";
 const PAGES = "bp-pages-v3";
 const FRESH_MS = 5 * 60_000; // serve a saved page instantly if it is younger than this
 const MAX_PAGES = 40;
