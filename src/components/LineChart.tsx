@@ -89,7 +89,7 @@ export function LineChart({ points: all, prefix = "", decimals = 4, locale, time
   return (
     <>
     <div className="zoom-bar">
-      <span className="muted">{win ? `${formatTime(t0)} → ${formatTime(t1)}` : ar ? "اسحب على الرسم عشان تكبّر فترة" : "Drag across the chart to zoom in"}</span>
+      <span className="muted" suppressHydrationWarning>{win ? `${formatTime(t0)} → ${formatTime(t1)}` : ar ? "اسحب على الرسم عشان تكبّر فترة" : "Drag across the chart to zoom in"}</span>
       {showChange ? <span className={changePct >= 0 ? "up" : "down"}><bdi dir="ltr">{changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%</bdi></span> : null}
       {win ? <button type="button" className="zoom-reset" onClick={() => setWin(null)}>{ar ? "إعادة الضبط" : "Reset zoom"}</button> : null}
     </div>
@@ -121,12 +121,12 @@ export function LineChart({ points: all, prefix = "", decimals = 4, locale, time
       </svg>
       <div className="line-axis">
         {ticks.map((v) => (
-          <span key={v} style={{ top: y(v) - 8 }}>{format(v)}</span>
+          <span key={v} style={{ top: y(v) - 8 }} suppressHydrationWarning>{format(v)}</span>
         ))}
       </div>
       <div className="line-x">
-        <span>{formatTime(t0)}</span>
-        <span>{formatTime(t1)}</span>
+        <span suppressHydrationWarning>{formatTime(t0)}</span>
+        <span suppressHydrationWarning>{formatTime(t1)}</span>
       </div>
       {hp ? (
         <>

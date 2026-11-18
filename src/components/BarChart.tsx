@@ -61,7 +61,7 @@ export function BarChart({ bars, locale, ariaLabel, warmPositive = false }: { ba
             {ticks.map((v) => (
               <g key={v}>
                 <line x1={PAD_LEFT} x2={W} y1={y(v)} y2={y(v)} className={v === 0 && hasNeg ? "grid zero" : "grid"} />
-                <text x={PAD_LEFT - 6} y={y(v) + 4} textAnchor="end" className="axis">
+                <text x={PAD_LEFT - 6} y={y(v) + 4} textAnchor="end" className="axis" suppressHydrationWarning>
                   {tick(v, locale)}
                 </text>
               </g>
@@ -100,7 +100,7 @@ export function BarChart({ bars, locale, ariaLabel, warmPositive = false }: { ba
                     </text>
                   ) : null}
                   {i === extreme && b.value !== 0 && hover === null ? (
-                    <text x={cx} y={b.value > 0 ? end - 6 : end + 14} textAnchor="middle" className="peak">
+                    <text x={cx} y={b.value > 0 ? end - 6 : end + 14} textAnchor="middle" className="peak" suppressHydrationWarning>
                       {tick(b.value, locale)}
                     </text>
                   ) : null}
