@@ -1,6 +1,5 @@
 import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { Card, PageTitle } from "@/components/ui";
 import { getSettings } from "@/lib/settings";
 
@@ -17,13 +16,14 @@ const ENDPOINTS: [string, { en: string; ar: string }, string][] = [
   ["/api/v1/accounts/{G…}", { en: "Balance, locked Pi and last activity of an account", ar: "رصيد الحساب وPi المقفول وآخر نشاط" }, ""],
   ["/api/v1/stats/daily?days=30", { en: "Daily activity (needs the statistics database)", ar: "النشاط اليومي (محتاج قاعدة بيانات الإحصائيات)" }, "/api/v1/stats/daily?days=7"],
   ["/api/v1/unlocks", { en: "Monthly unlock schedule and totals", ar: "جدول فك القفل الشهري والإجماليات" }, "/api/v1/unlocks"],
+  ["/api/v1/index", { en: "Pi Pressure Index (0–100) and its band", ar: "مؤشر ضغط Pi (0–100) وحالته" }, "/api/v1/index"],
   ["/api/v1/largest?range=24h", { en: "Largest Pi transfers: 24h, 7d or 30d", ar: "أكبر تحويلات Pi: 24h أو 7d أو 30d" }, "/api/v1/largest?range=24h"],
 ];
 
 export default async function ApiDocs({ params }: { params: Promise<{ s: string }> }) {
   const { t, lang } = await getSettings(params);
-  const h = await headers();
-  const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "localhost"}`;
+  // A fixed origin (not request headers) so the page can be cached.
+  const origin = process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app";
   return (
     <>
       <PageTitle title={t.apiTitle} />
