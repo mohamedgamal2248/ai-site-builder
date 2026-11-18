@@ -847,8 +847,6 @@ body { font-variant-numeric: tabular-nums; letter-spacing: 0; -webkit-font-smoot
 .line-chart { touch-action: pan-y; user-select: none; cursor: crosshair; }
 .zoom-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12.5px; margin-bottom: 4px; }
 .zoom-bar .muted { flex: 1; min-width: 0; }
-.zoom-reset { border: 1px solid var(--border); background: var(--surface-2); color: var(--link); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
-.chart .zoom-sel { fill: color-mix(in srgb, var(--chart) 16%, transparent); stroke: none; }
 .widget-previews { display: grid; gap: 10px; }
 .code-block { margin: 0; padding: 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); overflow-x: auto; font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap; word-break: break-all; }
 

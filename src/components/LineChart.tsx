@@ -20,13 +20,9 @@ const PAD_RIGHT = 10;
  * container width; the first and last values are stated in the card text.
  */
 export function LineChart({ points: all, prefix = "", decimals = 4, locale, timeMode, ariaLabel, showChange = true }: { points: Point[]; prefix?: string; decimals?: number; locale: string; timeMode: "hour" | "dayhour" | "day"; ariaLabel: string; showChange?: boolean }) {
+  // Hover (or tap on a phone) to read the value at any point.
   const [hover, setHover] = useState<number | null>(null);
-  // Drag across the chart to zoom into a window; the change over that window is shown above it.
-  const [win, setWin] = useState<[number, number] | null>(null);
-  const [drag, setDrag] = useState<[number, number] | null>(null);
-  const ar = locale.startsWith("ar");
-  const points = win ? all.slice(win[0], win[1] + 1) : all;
-  const offset = win ? win[0] : 0;
+  const points = all;
   // Large values (Pi totals) read better as "554.9M" than as nine digits.
   const format = (v: number) =>
     Math.abs(v) >= 100_000 ? `${prefix}${new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(v)}` : `${prefix}${v.toFixed(decimals)}`;
@@ -46,7 +42,8 @@ export function LineChart({ points: all, prefix = "", decimals = 4, locale, time
   let lo = Math.min(...vs);
   let hi = Math.max(...vs);
   const pad = (hi - lo) * 0.08 || hi * 0.01 || 1;
-  lo -= pad;
+  // Balances and prices never go below zero, so neither does the axis.
+  lo = vs.every((v) => v >= 0) ? Math.max(0, lo - pad) : lo - pad;
   hi += pad;
   const t0 = points[0].t;
   const t1 = points[points.length - 1].t;
@@ -54,7 +51,7 @@ export function LineChart({ points: all, prefix = "", decimals = 4, locale, time
   const y = (v: number) => PAD_TOP + ((hi - v) / (hi - lo)) * (H - PAD_TOP - PAD_BOTTOM);
   const line = points.map((p, i) => `${i ? "L" : "M"}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
   const area = `${line} L${x(t1).toFixed(1)},${H - PAD_BOTTOM} L${x(t0).toFixed(1)},${H - PAD_BOTTOM} Z`;
-  const ticks = [lo + pad, (lo + hi) / 2, hi - pad];
+  const ticks = [Math.min(...vs), (lo + hi) / 2, Math.max(...vs)];
   const hp = hover !== null ? points[hover] : null;
 
   const indexAt = (clientX: number) => {
@@ -67,47 +64,27 @@ export function LineChart({ points: all, prefix = "", decimals = 4, locale, time
     for (let i = 1; i < points.length; i++) if (Math.abs(points[i].t - t) < Math.abs(points[best].t - t)) best = i;
     return best;
   };
-  const onMove = (clientX: number) => {
-    const i = indexAt(clientX);
-    setHover(i);
-    if (drag) setDrag([drag[0], i]);
-  };
-  const endDrag = () => {
-    if (drag && Math.abs(drag[1] - drag[0]) >= 3) {
-      const a = Math.min(drag[0], drag[1]) + offset;
-      const b = Math.max(drag[0], drag[1]) + offset;
-      setWin([a, b]);
-      setHover(null);
-    }
-    setDrag(null);
-  };
   const first = points[0].v;
   const last = points[points.length - 1].v;
-  const changePct = first ? ((last - first) / first) * 100 : 0;
-  const sel = drag && drag[0] !== drag[1] ? [Math.min(drag[0], drag[1]), Math.max(drag[0], drag[1])] : null;
+  // A series starting at zero (a new wallet) has no meaningful percentage change.
+  const changePct = first > 0 ? ((last - first) / first) * 100 : null;
 
   return (
     <>
-    <div className="zoom-bar">
-      <span className="muted" suppressHydrationWarning>{win ? `${formatTime(t0)} → ${formatTime(t1)}` : ar ? "اسحب على الرسم عشان تكبّر فترة" : "Drag across the chart to zoom in"}</span>
-      {showChange ? <span className={changePct >= 0 ? "up" : "down"}><bdi dir="ltr">{changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%</bdi></span> : null}
-      {win ? <button type="button" className="zoom-reset" onClick={() => setWin(null)}>{ar ? "إعادة الضبط" : "Reset zoom"}</button> : null}
-    </div>
+    {showChange && changePct !== null ? (
+      <div className="zoom-bar">
+        <span className={changePct >= 0 ? "up" : "down"}><bdi dir="ltr">{changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%</bdi></span>
+      </div>
+    ) : null}
     <div
       className="chart line-chart"
       dir="ltr"
       ref={box}
-      onPointerDown={(e) => {
-        const i = indexAt(e.clientX);
-        setHover(i);
-        setDrag([i, i]);
-      }}
-      onPointerMove={(e) => onMove(e.clientX)}
-      onPointerUp={endDrag}
-      onPointerCancel={() => setDrag(null)}
-      onPointerLeave={() => {
-        setHover(null);
-        setDrag(null);
+      onPointerDown={(e) => setHover(indexAt(e.clientX))}
+      onPointerMove={(e) => setHover(indexAt(e.clientX))}
+      // Mouse: hide the value when leaving. Touch: keep it shown after the tap.
+      onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") setHover(null);
       }}
     >
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel} style={{ width: "100%", height: H }}>
@@ -117,7 +94,6 @@ export function LineChart({ points: all, prefix = "", decimals = 4, locale, time
         <path d={area} className="area" />
         <path d={line} className="line" pathLength={1} vectorEffect="non-scaling-stroke" />
         {hp ? <line x1={x(hp.t)} x2={x(hp.t)} y1={PAD_TOP} y2={H - PAD_BOTTOM} className="crosshair" vectorEffect="non-scaling-stroke" /> : null}
-        {sel ? <rect x={x(points[sel[0]].t)} y={PAD_TOP} width={x(points[sel[1]].t) - x(points[sel[0]].t)} height={H - PAD_TOP - PAD_BOTTOM} className="zoom-sel" /> : null}
       </svg>
       <div className="line-axis">
         {ticks.map((v) => (
