@@ -1,11 +1,11 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePath } from "@/lib/use-path";
 import { useEffect, useState } from "react";
 
 /** Thin bar at the top while a page is loading after a link click. */
 export function NavProgress() {
-  const path = usePathname();
+  const path = usePath();
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
 
   useEffect(() => {

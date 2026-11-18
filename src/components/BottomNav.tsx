@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePath } from "@/lib/use-path";
 
 const icons = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-9.5Z" />,
@@ -32,7 +32,7 @@ function Icon({ k }: { k: keyof typeof icons }) {
 
 /** App-style tab bar on phones. Search focuses the header box; Menu opens the drawer. */
 export function BottomNav({ labels }: { labels: { home: string; index: string; watch: string; unlocks: string; menu: string } }) {
-  const path = usePathname();
+  const path = usePath();
   const on = (h: string) => (h === "/" ? path === "/" : path === h || path.startsWith(`${h}/`));
   return (
     <nav className="bottom-nav" aria-label={labels.menu}>

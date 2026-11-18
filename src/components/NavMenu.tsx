@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePath } from "@/lib/use-path";
 import { useEffect, useRef, useState } from "react";
 
 export interface NavGroup {
@@ -16,7 +16,7 @@ function isActive(path: string, href: string) {
 
 /** Desktop: grouped dropdowns. Phones: a few quick links plus a ☰ drawer with everything. */
 export function NavMenu({ home, groups, quick, labels }: { home: string; groups: NavGroup[]; quick: [string, string][]; labels: { menu: string; close: string } }) {
-  const path = usePathname();
+  const path = usePath();
   const [open, setOpen] = useState<number | null>(null);
   const [drawer, setDrawer] = useState(false);
   const bar = useRef<HTMLDivElement>(null);
