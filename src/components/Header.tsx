@@ -75,7 +75,7 @@ export function Footer({ s }: { s: Settings }) {
     [x.group, [["/pressure", x.index], ["/alerts", x.alerts], ["/radar", x.radar], ["/report", x.report], ["/learn", lang === "ar" ? "تعلّم" : "Learn"]]],
     [t.footerExplore, [["/blocks", t.blocks], ["/txs", t.transactions], ["/operations", t.operations], ["/assets", t.assets]]],
     [t.footerStats, [["/stats", t.stats], ["/flows", t.flows], ["/whales", t.whales], ["/supply", t.supply], ["/unlocks", t.unlocks]]],
-    [t.footerDevelopers, [["/api-docs", t.apiDocs], ["https://github.com/mohamedgamal2248/ai-site-builder", t.sourceCode], ["https://api.mainnet.minepi.com", t.dataSource]]],
+    [t.footerDevelopers, [["/api-docs", t.apiDocs], ["https://github.com/mohamedgamal2248/blockchain-pi", t.sourceCode], ["https://api.mainnet.minepi.com", t.dataSource]]],
     [t.groupTools, [["/wallets", t.wallets], ["/richlist", t.richlist], ["/watchlist", t.watchlist], ["/status", t.status]]],
   ];
   return (
