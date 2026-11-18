@@ -1,6 +1,10 @@
 import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { Card, DataTable, PageTitle } from "@/components/ui";
+import { HBars } from "@/components/Donut";
+import { SupplyCard } from "@/components/SupplyCard";
+import { getMainnetSupply } from "@/lib/supply";
+import { extraDicts } from "@/lib/i18n-extra";
 import { knownWallets } from "@/data/wallets";
 import { compact, formatAmount } from "@/lib/format";
 import { horizon } from "@/lib/horizon";
@@ -24,7 +28,8 @@ interface Slice {
 export default async function Supply({ params }: { params: Promise<{ s: string }> }) {
   const { t, net, lang, native } = await getSettings(params);
   const main = net === "mainnet";
-  const [ledger, market, balances, locked, sync] = await Promise.all([
+  const [official, ledger, market, balances, locked, sync] = await Promise.all([
+    main ? getMainnetSupply() : Promise.resolve(null),
     horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
     main ? getMarket() : Promise.resolve(null),
     Promise.all(
@@ -59,6 +64,15 @@ export default async function Supply({ params }: { params: Promise<{ s: string }
     <>
       <PageTitle title={t.supply} sub={<><bdi dir="ltr">{formatAmount(total.toFixed(0))}</bdi> {native}</>} />
       <p className="muted">{t.supplyIntro}</p>
+      {official ? <SupplyCard s={official} x={extraDicts[lang].mainnet} lang={lang} /> : null}
+      {balances.some((b) => b.bal > 0) ? (
+        <Card title={lang === "ar" ? "أرصدة المحافظ المعروفة" : "Known wallet balances"}>
+          <HBars
+            ariaLabel={lang === "ar" ? "أرصدة المحافظ المعروفة" : "Known wallet balances"}
+            rows={[...balances].filter((b) => b.bal > 0).sort((a, b) => b.bal - a.bal).map((b) => ({ key: b.w.address, label: (lang === "ar" ? b.w.labelAr : b.w.label).split(" · ")[0], value: b.bal, display: `${compact(b.bal, lang)} ${native}` }))}
+          />
+        </Card>
+      ) : null}
       <Card>
         <div className="supply-bar" role="img" aria-label={t.supply}>
           {slices.map((s) =>

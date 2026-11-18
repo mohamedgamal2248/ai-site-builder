@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NickButton } from "@/components/Nick";
 import { Countdown } from "@/components/Countdown";
+import { Donut } from "@/components/Donut";
 import QRCode from "qrcode";
 import { WatchButton } from "@/components/WatchButton";
 import { knownWallet } from "@/data/wallets";
@@ -10,7 +11,7 @@ import { WalletBadge } from "@/components/WalletBadge";
 import { OpTable } from "@/components/OpTable";
 import { TxTable } from "@/components/TxTable";
 import { AccountLink, Amount, Card, Copyable, DataTable, Facts, Pager } from "@/components/ui";
-import { assetLabel, canonicalAssetLabel, expiryTime, formatAmount, formatDate, lockOwner, shortId, unlockTime } from "@/lib/format";
+import { assetLabel, canonicalAssetLabel, compact, expiryTime, formatAmount, formatDate, lockOwner, shortId, unlockTime } from "@/lib/format";
 import type { SearchParams } from "@/lib/found";
 import { horizon, HorizonError, type Account, type Balance, type ClaimableBalance } from "@/lib/horizon";
 import { paged, readPageParams } from "@/lib/paging";
@@ -149,6 +150,21 @@ export default async function AccountPage({ params }: { params: Params }) {
               <div className="hint">{locked.records.length} {lang === "ar" ? "رصيد" : locked.records.length === 1 ? "balance" : "balances"}</div>
             </div>
           </div>
+          {Number(nativeBal?.balance ?? 0) + lockedTotal > 0 ? (
+            <Card title={lang === "ar" ? "توزيع الرصيد" : "Balance breakdown"}>
+              <Donut
+                ariaLabel={lang === "ar" ? "توزيع الرصيد" : "Balance breakdown"}
+                size={140}
+                center={compact(Number(nativeBal?.balance ?? 0) + lockedTotal, lang)}
+                sub={native}
+                slices={[
+                  { key: "a", label: t.available, value: Math.max(0, Number(nativeBal?.balance ?? 0) - reserved - Number(nativeBal?.selling_liabilities ?? 0)), display: `${compact(Math.max(0, Number(nativeBal?.balance ?? 0) - reserved - Number(nativeBal?.selling_liabilities ?? 0)), lang)} ${native}`, tone: 1 },
+                  { key: "l", label: t.locked, value: lockedTotal, display: `${compact(lockedTotal, lang)} ${native}`, tone: 2 },
+                  { key: "r", label: t.reserved, value: reserved, display: `${formatAmount(reserved.toFixed(7), 2)} ${native}`, tone: 0 },
+                ]}
+              />
+            </Card>
+          ) : null}
           {soonest ? (
             <section className="card unlock-next">
               <div>

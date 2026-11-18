@@ -73,7 +73,7 @@ export default async function Growth({ params }: { params: Promise<{ s: string }
       ) : (
         <>
           <Card title={g.cumulative}>
-            <LineChart points={cumulative} decimals={0} locale={locale} timeMode="day" ariaLabel={g.cumulative} />
+            <LineChart points={cumulative} decimals={0} locale={locale} timeMode="day" ariaLabel={g.cumulative} showChange={false} />
           </Card>
           <div className="grid-2">
             <Card title={g.weekly}>

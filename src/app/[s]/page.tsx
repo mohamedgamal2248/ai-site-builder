@@ -11,6 +11,9 @@ import { PriceCard } from "@/components/PriceCard";
 import { PriceTicker } from "@/components/PriceTicker";
 import { LiveBlock } from "@/components/LiveBlock";
 import { BlockCubes } from "@/components/BlockCubes";
+import { SupplyCard } from "@/components/SupplyCard";
+import { getMainnetSupply } from "@/lib/supply";
+import { extraDicts } from "@/lib/i18n-extra";
 import { StatsMore } from "@/components/StatsMore";
 import { getSettings, type Settings } from "@/lib/settings";
 import { getDaily, statsEnabled } from "@/lib/stats";
@@ -31,6 +34,11 @@ export default async function Home({ params }: { params: Promise<{ s: string }> 
       <Suspense fallback={<div className="hero skeleton-hero" aria-hidden="true" />}>
         <Hero s={s} />
       </Suspense>
+      {s.net === "mainnet" ? (
+        <Suspense fallback={<div className="card skeleton-card" style={{ minHeight: 260 }} aria-hidden="true" />}>
+          <Supply s={s} />
+        </Suspense>
+      ) : null}
       <Suspense fallback={<div className="stats eight" aria-hidden="true">{Array.from({ length: 8 }, (_, i) => <div key={i} className="stat skeleton-stat" />)}</div>}>
         <NetworkStats s={s} />
       </Suspense>
@@ -266,4 +274,9 @@ async function Insights({ s }: { s: Settings }) {
       </ul>
     </section>
   );
+}
+
+async function Supply({ s }: { s: Settings }) {
+  const sup = await getMainnetSupply();
+  return sup ? <SupplyCard s={sup} x={extraDicts[s.lang].mainnet} lang={s.lang} /> : null;
 }

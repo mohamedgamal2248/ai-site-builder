@@ -2,6 +2,7 @@ import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Gauge } from "@/components/Gauge";
+import { DivergingBars } from "@/components/Donut";
 import { LineChart } from "@/components/LineChart";
 import { NotConfigured } from "@/components/NotConfigured";
 import { Card, DataTable, PageTitle } from "@/components/ui";
@@ -55,6 +56,12 @@ export default async function IndexPage({ params }: { params: Promise<{ s: strin
       </section>
 
       <Card title={x.components}>
+        <DivergingBars
+          ariaLabel={x.components}
+          labels={[lang === "ar" ? "← بيع · شراء →" : "← selling · buying →", ""]}
+          rows={idx.components.map((c) => ({ key: c.key, label: x.names[c.key], value: c.available ? c.signal : null, display: c.available && c.signal !== null ? `${c.signal > 0 ? "+" : ""}${c.signal.toFixed(1)}` : "—" }))}
+        />
+        <div style={{ height: 14 }} />
         <DataTable<Component>
           rows={idx.components}
           rowKey={(c) => c.key}

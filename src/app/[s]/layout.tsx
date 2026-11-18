@@ -93,7 +93,7 @@ export default async function RootLayout({ children, params }: { children: React
           <main className="container main">{children}</main>
         </QueryProvider>
         <Footer s={s} />
-        <BottomNav labels={{ home: s.t.home, index: insightDicts[s.lang].indexShort, search: s.t.search, alerts: insightDicts[s.lang].alerts, menu: s.t.menu }} />
+        <BottomNav labels={{ home: s.t.home, index: insightDicts[s.lang].indexShort, watch: s.lang === "ar" ? "متابعاتي" : "Watching", unlocks: s.lang === "ar" ? "فك القفل" : "Unlocks", menu: s.t.menu }} />
         <SwRegister />
         <ErrorReporter />
         <InstallPrompt labels={extraDicts[s.lang].install} />

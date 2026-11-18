@@ -19,7 +19,7 @@ const PAD_RIGHT = 10;
  * Single-series line with a light area wash, crosshair and tooltip. Fills its
  * container width; the first and last values are stated in the card text.
  */
-export function LineChart({ points: all, prefix = "", decimals = 4, locale, timeMode, ariaLabel }: { points: Point[]; prefix?: string; decimals?: number; locale: string; timeMode: "hour" | "dayhour" | "day"; ariaLabel: string }) {
+export function LineChart({ points: all, prefix = "", decimals = 4, locale, timeMode, ariaLabel, showChange = true }: { points: Point[]; prefix?: string; decimals?: number; locale: string; timeMode: "hour" | "dayhour" | "day"; ariaLabel: string; showChange?: boolean }) {
   const [hover, setHover] = useState<number | null>(null);
   // Drag across the chart to zoom into a window; the change over that window is shown above it.
   const [win, setWin] = useState<[number, number] | null>(null);
@@ -27,7 +27,9 @@ export function LineChart({ points: all, prefix = "", decimals = 4, locale, time
   const ar = locale.startsWith("ar");
   const points = win ? all.slice(win[0], win[1] + 1) : all;
   const offset = win ? win[0] : 0;
-  const format = (v: number) => `${prefix}${v.toFixed(decimals)}`;
+  // Large values (Pi totals) read better as "554.9M" than as nine digits.
+  const format = (v: number) =>
+    Math.abs(v) >= 100_000 ? `${prefix}${new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(v)}` : `${prefix}${v.toFixed(decimals)}`;
   const formatTime = (t: number) =>
     new Intl.DateTimeFormat(
       locale,
@@ -88,7 +90,7 @@ export function LineChart({ points: all, prefix = "", decimals = 4, locale, time
     <>
     <div className="zoom-bar">
       <span className="muted">{win ? `${formatTime(t0)} → ${formatTime(t1)}` : ar ? "اسحب على الرسم عشان تكبّر فترة" : "Drag across the chart to zoom in"}</span>
-      <span className={changePct >= 0 ? "up" : "down"}><bdi dir="ltr">{changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%</bdi></span>
+      {showChange ? <span className={changePct >= 0 ? "up" : "down"}><bdi dir="ltr">{changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%</bdi></span> : null}
       {win ? <button type="button" className="zoom-reset" onClick={() => setWin(null)}>{ar ? "إعادة الضبط" : "Reset zoom"}</button> : null}
     </div>
     <div

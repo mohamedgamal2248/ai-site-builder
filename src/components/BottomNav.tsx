@@ -11,16 +11,12 @@ const icons = {
       <path d="m12 17 4-5" />
     </>
   ),
-  search: (
+  watch: <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />,
+  unlocks: (
     <>
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.5-3.5" />
-    </>
-  ),
-  alerts: (
-    <>
-      <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+      <rect x="4" y="10" width="16" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 7.8-1.2" />
+      <path d="M12 14v3" />
     </>
   ),
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
@@ -35,16 +31,15 @@ function Icon({ k }: { k: keyof typeof icons }) {
 }
 
 /** App-style tab bar on phones. Search focuses the header box; Menu opens the drawer. */
-export function BottomNav({ labels }: { labels: { home: string; index: string; search: string; alerts: string; menu: string } }) {
+export function BottomNav({ labels }: { labels: { home: string; index: string; watch: string; unlocks: string; menu: string } }) {
   const path = usePathname();
   const on = (h: string) => (h === "/" ? path === "/" : path === h || path.startsWith(`${h}/`));
-  const focusSearch = () => window.dispatchEvent(new Event("bp:search"));
   return (
     <nav className="bottom-nav" aria-label={labels.menu}>
       <Link href="/" className={on("/") ? "active" : undefined} aria-current={on("/") ? "page" : undefined}><Icon k="home" /><span>{labels.home}</span></Link>
       <Link href="/pressure" className={on("/pressure") ? "active" : undefined}><Icon k="index" /><span>{labels.index}</span></Link>
-      <button type="button" onClick={focusSearch}><Icon k="search" /><span>{labels.search}</span></button>
-      <Link href="/alerts" className={on("/alerts") ? "active" : undefined}><Icon k="alerts" /><span>{labels.alerts}</span></Link>
+      <Link href="/watchlist" className={on("/watchlist") ? "active" : undefined}><Icon k="watch" /><span>{labels.watch}</span></Link>
+      <Link href="/unlocks" className={on("/unlocks") ? "active" : undefined}><Icon k="unlocks" /><span>{labels.unlocks}</span></Link>
       <button type="button" onClick={() => window.dispatchEvent(new Event("bp:menu"))}><Icon k="menu" /><span>{labels.menu}</span></button>
     </nav>
   );

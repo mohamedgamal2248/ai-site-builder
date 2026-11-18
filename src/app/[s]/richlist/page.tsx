@@ -3,6 +3,9 @@ import { Ago } from "@/components/Ago";
 import type { Metadata } from "next";
 import { NotConfigured } from "@/components/NotConfigured";
 import { AccountLink, Amount, Card, DataTable, PageTitle } from "@/components/ui";
+import { HBars } from "@/components/Donut";
+import { knownWallet } from "@/data/wallets";
+import { compact } from "@/lib/format";
 import { timeAgo } from "@/lib/format";
 import { getSettings } from "@/lib/settings";
 import { getHolders, statsEnabled, type HolderRow } from "@/lib/stats";
@@ -28,6 +31,17 @@ export default async function RichList({ params }: { params: Promise<{ s: string
     <>
       <PageTitle title={t.richlist} />
       <p className="muted">{t.richlistNote.replace("{n}", tracked.toLocaleString("en"))}</p>
+      {rows.length ? (
+        <Card title={lang === "ar" ? "أكبر 10 حاملين" : "Top 10 holders"}>
+          <HBars
+            ariaLabel={lang === "ar" ? "أكبر 10 حاملين" : "Top 10 holders"}
+            rows={rows.slice(0, 10).map((r) => {
+              const k = knownWallet(r.account);
+              return { key: r.account, label: k ? (lang === "ar" ? k.labelAr : k.label).split(" · ")[0] : `${r.account.slice(0, 5)}…${r.account.slice(-4)}`, value: Number(r.balance), display: `${compact(Number(r.balance), lang)} ${native}` };
+            })}
+          />
+        </Card>
+      ) : null}
       <Card>
         <DataTable<HolderRow & { i: number }>
           rows={rows.map((r, i) => ({ ...r, i: i + 1 }))}

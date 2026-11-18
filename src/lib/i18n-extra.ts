@@ -2,6 +2,20 @@ import type { Lang } from "./i18n";
 
 /** Strings for the tools added in the second polish pass (search palette, install, widgets…). */
 const en = {
+  mainnet: {
+    title: "Pi mainnet supply",
+    source: "Source: Pi's official block explorer",
+    migrated: "Migrated mining rewards",
+    locked: "Currently locked",
+    unlocked: "Currently unlocked",
+    notMigrated: "Not migrated yet",
+    circulating: "Circulating supply",
+    effective: "Effective total supply (R/65%)",
+    max: "Max supply",
+    ofMax: "of max supply",
+    ofEffective: "of effective total",
+    lockedShare: "of migrated Pi is locked",
+  },
   growth: {
     title: "Network growth",
     intro: "How fast the Pi network is growing: new accounts, activity and transaction success, from our indexed history (complete days only).",
@@ -62,6 +76,20 @@ const en = {
 export type ExtraDict = typeof en;
 
 const ar: ExtraDict = {
+  mainnet: {
+    title: "معروض Pi على الشبكة الرئيسية",
+    source: "المصدر: مستكشف Pi الرسمي",
+    migrated: "مكافآت التعدين المنقولة",
+    locked: "مقفول حالياً",
+    unlocked: "متاح حالياً",
+    notMigrated: "لسه ما اتنقلش",
+    circulating: "المعروض المتداول",
+    effective: "إجمالي المعروض الفعلي (R/65%)",
+    max: "أقصى معروض",
+    ofMax: "من أقصى معروض",
+    ofEffective: "من الإجمالي الفعلي",
+    lockedShare: "من الـ Pi المنقول مقفول",
+  },
   growth: {
     title: "نمو الشبكة",
     intro: "شبكة Pi بتكبر بسرعة قد إيه: الحسابات الجديدة والنشاط ونسبة نجاح المعاملات، من التاريخ اللي فهرسناه (أيام كاملة بس).",

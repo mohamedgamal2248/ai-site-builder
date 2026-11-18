@@ -10,6 +10,8 @@ export interface Bar {
   value: number;
   /** Text shown in the tooltip, already formatted. */
   display: string;
+  /** Draw this bar in the strong shade (e.g. the biggest month). */
+  highlight?: boolean;
 }
 
 const H = 180;
@@ -78,7 +80,7 @@ export function BarChart({ bars, locale, ariaLabel, warmPositive = false }: { ba
               }
               return (
                 <g key={b.key}>
-                  {d ? <path d={d} className={`bar${(b.value < 0) !== warmPositive ? " neg" : ""}${b.value < 0 ? " below" : ""}${hover === i ? " on" : ""}`} style={{ animationDelay: `${Math.min(i * 12, 400)}ms` }} /> : null}
+                  {d ? <path d={d} className={`bar${(b.value < 0) !== warmPositive ? " neg" : ""}${b.value < 0 ? " below" : ""}${hover === i || b.highlight ? " on" : ""}`} style={{ animationDelay: `${Math.min(i * 12, 400)}ms` }} /> : null}
                   {/* Hit target wider and taller than the mark. */}
                   <rect
                     x={PAD_LEFT + slot * i}
