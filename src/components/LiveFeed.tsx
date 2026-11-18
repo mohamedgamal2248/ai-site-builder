@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { subscribeHorizon } from "@/lib/stream";
 import { formatAmount, shortId, timeAgo } from "@/lib/format";
@@ -12,6 +12,7 @@ import { knownWallet } from "@/data/wallets";
 import { WalletBadge } from "./WalletBadge";
 
 const POLL_MS = 5000;
+const noop = () => () => {};
 export const latestKey = (net: string) => ["latest", net] as const;
 const FILTERS: ("all" | ActivityKind)[] = ["all", "payment", "lock", "claim", "create"];
 
@@ -74,7 +75,11 @@ export function LiveFeed({ initial, t, lang, horizon, tabs }: { initial: Latest;
     staleTime: 10_000,
     refetchInterval: stream === "down" ? POLL_MS : false,
   });
-  const data = cachedData ?? initial;
+  // Until this part of the page has hydrated, show exactly what the server sent: the stream
+  // can fill the cache before a late (streamed) section hydrates, and newer rows would not
+  // match the server's HTML (React error #418).
+  const hydrated = useSyncExternalStore(noop, () => true, () => false);
+  const data = hydrated ? (cachedData ?? initial) : initial;
   const online = !isError;
   const [now, setNow] = useState(() => Date.now());
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
