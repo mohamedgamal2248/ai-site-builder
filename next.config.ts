@@ -3,10 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
-  // Render page metadata in <head> for every visitor (not streamed in later). Pages are cached
-  // once and served to everyone, so they must have one shape; the streamed variant could race
-  // with hydration in browsers (React error #418).
-  htmlLimitedBots: /.*/,
   experimental: {
     // Keep visited pages in the browser's router cache so going back, or re-opening
     // a block or transaction you just saw, is instant.
