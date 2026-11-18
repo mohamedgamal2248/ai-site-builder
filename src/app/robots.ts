@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE = process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app";
+const BASE = process.env.SITE_URL || "https://blockchainpi.vercel.app";
 
 export default function robots(): MetadataRoute.Robots {
   return {

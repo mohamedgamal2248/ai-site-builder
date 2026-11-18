@@ -3,7 +3,7 @@
  * lines of script, so it is tiny, needs no React, and is cached at the CDN for a day.
  * Options: ?lang=ar|en, ?theme=light|dark.
  */
-const BASE = process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app";
+const BASE = process.env.SITE_URL || "https://blockchainpi.vercel.app";
 
 export const dynamic = "force-static";
 

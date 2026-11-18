@@ -23,7 +23,7 @@ const ENDPOINTS: [string, { en: string; ar: string }, string][] = [
 export default async function ApiDocs({ params }: { params: Promise<{ s: string }> }) {
   const { t, lang } = await getSettings(params);
   // A fixed origin (not request headers) so the page can be cached.
-  const origin = process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app";
+  const origin = process.env.SITE_URL || "https://blockchainpi.vercel.app";
   return (
     <>
       <PageTitle title={t.apiTitle} />

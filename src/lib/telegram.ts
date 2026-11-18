@@ -9,7 +9,7 @@ import { knownWallet } from "@/data/wallets";
 import type { Sql } from "./db";
 import type { Network } from "./horizon";
 
-const SITE = process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app";
+const SITE = process.env.SITE_URL || "https://blockchainpi.vercel.app";
 
 export const telegramConfigured = () => !!process.env.TELEGRAM_BOT_TOKEN && !!process.env.TELEGRAM_CHAT_ID;
 

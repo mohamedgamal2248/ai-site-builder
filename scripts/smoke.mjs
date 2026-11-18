@@ -2,7 +2,7 @@
 // correct 404s, and the live feed connected. Usage: SITE=https://… node scripts/smoke.mjs
 import { chromium, devices } from "playwright";
 
-const SITE = (process.env.SITE || "https://ai-site-builder-peach.vercel.app").replace(/\/$/, "");
+const SITE = (process.env.SITE || "https://blockchainpi.vercel.app").replace(/\/$/, "");
 const PAGES = ["/", "/blocks", "/txs", "/stats", "/pressure", "/whales", "/unlocks", "/report", "/learn", "/news"];
 const failures = [];
 

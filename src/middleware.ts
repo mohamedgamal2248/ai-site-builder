@@ -32,8 +32,19 @@ function rateLimit(req: NextRequest) {
   return NextResponse.next();
 }
 
+/** The site moved to blockchainpi.vercel.app; the old address forwards everything there. */
+const OLD_HOSTS = new Set(["ai-site-builder-peach.vercel.app"]);
+const HOME = "blockchainpi.vercel.app";
+
 export function middleware(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
+  if (OLD_HOSTS.has(req.headers.get("host") ?? "")) {
+    const to = new URL(req.url);
+    to.host = HOME;
+    to.protocol = "https:";
+    to.port = "";
+    return NextResponse.redirect(to, 308);
+  }
   if (pathname.startsWith("/api/")) return rateLimit(req);
 
   const first = pathname.split("/")[1] ?? "";

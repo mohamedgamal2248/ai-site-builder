@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
         ? "مستكشف بلوكتشين Pi بالعربي: سعر Pi لحظة بلحظة، آخر البلوكات والمعاملات، تحركات الحيتان والفاونديشن والمنصات، ومؤشر ضغط Pi."
         : "Pi Network blockchain explorer: live Pi price, blocks and transactions, whale, Foundation and exchange movements, and the Pi Pressure Index.",
     icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png" },
-    metadataBase: new URL(process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app"),
+    metadataBase: new URL(process.env.SITE_URL || "https://blockchainpi.vercel.app"),
   };
 }
 
@@ -56,7 +56,7 @@ export const viewport: Viewport = {
 // own path on this domain. Only on Vercel, so local runs and tests are not counted.
 const ANALYTICS = process.env.VERCEL ? "window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};" : "";
 
-const SITE = process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app";
+const SITE = process.env.SITE_URL || "https://blockchainpi.vercel.app";
 /** Site-wide structured data: lets Google show the site name and a search box for it. */
 const siteJsonLd = (lang: "ar" | "en") => ({
   "@context": "https://schema.org",

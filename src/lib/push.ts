@@ -10,7 +10,7 @@ export function pushConfigured() {
 
 function setup() {
   webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || "https://ai-site-builder-peach.vercel.app",
+    process.env.VAPID_SUBJECT || "https://blockchainpi.vercel.app",
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
     process.env.VAPID_PRIVATE_KEY!,
   );

@@ -10,7 +10,7 @@ export async function generateMetadata({ params }: { params: Promise<{ s: string
   return pageMeta(params, "Widget", "/widgets");
 }
 
-const BASE = process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app";
+const BASE = process.env.SITE_URL || "https://blockchainpi.vercel.app";
 
 export default async function Widgets({ params }: { params: Promise<{ s: string }> }) {
   const { lang } = await getSettings(params);
