@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Suspense, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Footer, Header, navGroups } from "@/components/Header";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ErrorReporter } from "@/components/ErrorReporter";
@@ -94,11 +94,7 @@ export default async function RootLayout({ children, params }: { children: React
         <NavProgress />
         <QueryProvider>
           <Header s={s} />
-          <main id="main" tabIndex={-1} className="container main">
-            {/* A boundary for the page: if its data is still arriving when the browser hydrates,
-                React waits here instead of failing the whole page (React error #418). */}
-            <Suspense>{children}</Suspense>
-          </main>
+          <main id="main" tabIndex={-1} className="container main">{children}</main>
         </QueryProvider>
         <Footer s={s} />
         <BottomNav labels={{ home: s.t.home, index: insightDicts[s.lang].indexShort, watch: s.lang === "ar" ? "متابعاتي" : "Watching", unlocks: s.lang === "ar" ? "فك القفل" : "Unlocks", menu: s.t.menu }} />
