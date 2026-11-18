@@ -6,7 +6,7 @@ import { ErrorReporter } from "@/components/ErrorReporter";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { extraDicts } from "@/lib/i18n-extra";
 import { notFound } from "next/navigation";
-import { BASE_SEGMENTS, getSettings } from "@/lib/settings";
+import { getSettings } from "@/lib/settings";
 import { SwRegister } from "@/components/SwRegister";
 import { BottomNav } from "@/components/BottomNav";
 import { NavProgress } from "@/components/NavProgress";
@@ -20,9 +20,13 @@ import "./globals.css";
 
 type Params = Promise<{ s: string }>;
 
-/** The four language/network shells are built ahead of time; query variants on first visit. */
-export function generateStaticParams() {
-  return BASE_SEGMENTS.map((s) => ({ s }));
+/**
+ * Nothing is prerendered at build time: each page is rendered on its first visit and then
+ * served from the CDN (ISR). Keeps deploys fast and puts no load on Horizon or the database
+ * during builds (a slow upstream once made a build-time render time out).
+ */
+export function generateStaticParams(): { s: string }[] {
+  return [];
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
