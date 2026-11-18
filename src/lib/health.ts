@@ -15,16 +15,21 @@ async function timed(fn: () => Promise<unknown>) {
 }
 
 /** Live checks of Horizon, the price source, the database and indexer lag. */
-export async function healthChecks(net: Network): Promise<Check[]> {
+/**
+ * `fresh` (default) bypasses every cache, for /api/health monitors. The cached status page passes
+ * false: an uncached fetch would make Next turn the cached page dynamic and fail at runtime.
+ */
+export async function healthChecks(net: Network, fresh = true): Promise<Check[]> {
+  const opts = (ms: number): RequestInit => (fresh ? { cache: "no-store", signal: AbortSignal.timeout(ms) } : { next: { revalidate: 30 }, signal: AbortSignal.timeout(ms) });
   const out: Check[] = [];
   try {
-    const ms = await timed(() => fetch(`${horizonHost(net)}/`, { cache: "no-store", signal: AbortSignal.timeout(8000) }).then((r) => { if (!r.ok) throw new Error(String(r.status)); }));
+    const ms = await timed(() => fetch(`${horizonHost(net)}/`, opts(8000)).then((r) => { if (!r.ok) throw new Error(String(r.status)); }));
     out.push({ name: "Pi Horizon API", state: ms > 2500 ? "degraded" : "ok", ms });
   } catch (e) {
     out.push({ name: "Pi Horizon API", state: "down", detail: String((e as Error).message) });
   }
   try {
-    const ms = await timed(() => fetch("https://www.okx.com/api/v5/market/ticker?instId=PI-USDT", { cache: "no-store", signal: AbortSignal.timeout(6000) }).then((r) => { if (!r.ok) throw new Error(String(r.status)); }));
+    const ms = await timed(() => fetch("https://www.okx.com/api/v5/market/ticker?instId=PI-USDT", opts(6000)).then((r) => { if (!r.ok) throw new Error(String(r.status)); }));
     out.push({ name: "OKX price", state: ms > 2500 ? "degraded" : "ok", ms });
   } catch (e) {
     out.push({ name: "OKX price", state: "down", detail: String((e as Error).message) });

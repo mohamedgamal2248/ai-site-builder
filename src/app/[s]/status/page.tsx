@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params: Promise<{ s: string
 
 export default async function Status({ params }: { params: Promise<{ s: string }> }) {
   const { t, net } = await getSettings(params);
-  const checks = await healthChecks(net);
+  const checks = await healthChecks(net, false);
   const label = { ok: t.ok, degraded: t.degraded, down: t.down };
   const cls = { ok: "ok", degraded: "neutral", down: "bad" };
   return (
