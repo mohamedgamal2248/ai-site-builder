@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Footer, Header } from "@/components/Header";
+import { notFound } from "next/navigation";
 import { BASE_SEGMENTS, getSettings } from "@/lib/settings";
 import { SwRegister } from "@/components/SwRegister";
 import { BottomNav } from "@/components/BottomNav";
@@ -43,6 +44,8 @@ export const viewport: Viewport = {
 const THEME_SCRIPT = `try{var m=document.cookie.match(/(?:^|; )theme=(light|dark)/);if(m)document.documentElement.dataset.theme=m[1]}catch(e){}`;
 
 export default async function RootLayout({ children, params }: { children: ReactNode; params: Params }) {
+  // Only the middleware's segments are real pages; anything else (e.g. /missing.png) is a 404.
+  if (!/^(ar|en)-(main|test)(~|%7E|$)/i.test((await params).s)) notFound();
   const s = await getSettings(params);
   return (
     <html lang={s.lang} dir={s.lang === "ar" ? "rtl" : "ltr"} className={plex.variable} suppressHydrationWarning>

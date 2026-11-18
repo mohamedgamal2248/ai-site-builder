@@ -1,12 +1,8 @@
-import Link from "next/link";
+import type { Metadata } from "next";
+import { NotFoundView } from "@/components/NotFoundView";
 
-/** Shown in both languages: a 404 has no page settings to read. */
+export const metadata: Metadata = { title: "404", robots: { index: false } };
+
 export default function NotFound() {
-  return (
-    <div className="card error-box">
-      <h1>الصفحة مش موجودة · Page not found</h1>
-      <p>الرابط ده مش موجود أو اتشال. · This link does not exist or was removed.</p>
-      <Link href="/" className="btn">الرئيسية · Home</Link>
-    </div>
-  );
+  return <NotFoundView />;
 }

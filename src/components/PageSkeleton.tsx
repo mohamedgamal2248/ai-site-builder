@@ -1,5 +1,5 @@
 /** Shown instantly on every navigation while the next page's data loads. */
-export default function Loading() {
+export default function PageSkeleton() {
   return (
     <div aria-busy="true" aria-live="polite">
       <div className="skeleton skeleton-title" />
