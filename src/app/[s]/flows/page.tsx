@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BarChart } from "@/components/BarChart";
@@ -11,7 +12,9 @@ import { getSettings } from "@/lib/settings";
 import { getFlows, statsEnabled, type FlowRow } from "@/lib/stats";
 
 export const revalidate = 300;
-export const metadata: Metadata = { title: "Exchange flows" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Exchange flows", "/flows");
+}
 
 const RANGES = { "30d": 30, "90d": 90 } as const;
 

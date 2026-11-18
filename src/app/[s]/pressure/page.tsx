@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Gauge } from "@/components/Gauge";
@@ -12,7 +13,9 @@ import { getSettings } from "@/lib/settings";
 import { statsEnabled } from "@/lib/stats";
 
 export const revalidate = 300;
-export const metadata: Metadata = { title: "Pi Pressure Index" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Pi Pressure Index", "/pressure");
+}
 
 function fmtValue(c: Component, lang: "ar" | "en", native: string) {
   if (c.value === null) return "—";

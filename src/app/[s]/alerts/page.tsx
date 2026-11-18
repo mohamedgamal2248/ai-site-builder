@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { AlertList } from "@/components/AlertList";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -10,7 +11,9 @@ import { getSettings } from "@/lib/settings";
 import { statsEnabled } from "@/lib/stats";
 
 export const revalidate = 60;
-export const metadata: Metadata = { title: "Alerts" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Alerts", "/alerts");
+}
 
 export default async function Alerts({ params }: { params: Promise<{ s: string }> }) {
   const { t, net, lang, native } = await getSettings(params);

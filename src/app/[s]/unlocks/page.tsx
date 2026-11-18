@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { BarChart } from "@/components/BarChart";
 import { NotConfigured } from "@/components/NotConfigured";
@@ -12,7 +13,9 @@ import { getUnlockPressure } from "@/lib/insights";
 import { backfillProgress, getSync, getTopLocked, getUnlockCalendar, getUnlocks, statsEnabled, type LockedHolder, type UnlockMonth } from "@/lib/stats";
 
 export const revalidate = 300;
-export const metadata: Metadata = { title: "Unlock schedule" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Unlock schedule", "/unlocks");
+}
 
 export default async function Unlocks({ params }: { params: Promise<{ s: string }> }) {
   const { t, net, lang, native } = await getSettings(params);

@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { Card, DataTable, LedgerLink, PageTitle, Pager, Mono } from "@/components/ui";
 import { formatDate, shortId } from "@/lib/format";
@@ -7,7 +8,9 @@ import { paged, readPageParams } from "@/lib/paging";
 import { getSettings } from "@/lib/settings";
 
 export const revalidate = 30;
-export const metadata: Metadata = { title: "Blocks" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Blocks", "/blocks");
+}
 
 export default async function Blocks({ params }: { params: Promise<{ s: string }> }) {
   const { t, net, lang } = await getSettings(params);

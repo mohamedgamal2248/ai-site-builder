@@ -1,10 +1,13 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Card, PageTitle } from "@/components/ui";
 import { getSettings } from "@/lib/settings";
 
 export const revalidate = 86400;
-export const metadata: Metadata = { title: "API" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "API", "/api-docs");
+}
 
 const ENDPOINTS: [string, { en: string; ar: string }, string][] = [
   ["/api/v1/network", { en: "Latest ledger, supply, fees, price and market data", ar: "آخر بلوك، والمعروض، والرسوم، والسعر وبيانات السوق" }, "/api/v1/network"],

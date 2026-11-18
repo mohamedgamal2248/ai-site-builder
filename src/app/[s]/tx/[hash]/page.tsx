@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { OpTable } from "@/components/OpTable";
+import { TxStory } from "@/components/TxStory";
 import { AccountLink, Card, Copyable, Facts, LedgerLink, Mono, PageTitle, Status } from "@/components/ui";
 import { formatDate, shortId, stroopsToPi } from "@/lib/format";
 import { found } from "@/lib/found";
@@ -38,6 +39,7 @@ export default async function TxPage({ params }: { params: Params }) {
   return (
     <>
       <PageTitle title={t.transaction} sub={<Mono>{shortId(tx.hash, 10, 10)}</Mono>} />
+      <TxStory ops={ops.records} ok={tx.successful} lang={lang} native={native} />
       <Card>
         <Facts
           rows={[

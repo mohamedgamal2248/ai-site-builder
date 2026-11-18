@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { AccountLink, Amount, Card, DataTable, PageTitle, Pager } from "@/components/ui";
 import { canonicalAssetLabel, formatAmount, formatDate, lockOwner, unlockTime } from "@/lib/format";
@@ -7,7 +8,9 @@ import { paged, readPageParams } from "@/lib/paging";
 import { getSettings } from "@/lib/settings";
 
 export const revalidate = 120;
-export const metadata: Metadata = { title: "Locked Pi" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Locked Pi", "/locked");
+}
 
 export default async function Locked({ params }: { params: Promise<{ s: string }> }) {
   const { t, net, lang, native } = await getSettings(params);

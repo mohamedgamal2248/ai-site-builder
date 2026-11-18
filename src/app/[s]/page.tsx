@@ -10,6 +10,7 @@ import { getCandles, getMarket, getPiPrice } from "@/lib/price";
 import { PriceCard } from "@/components/PriceCard";
 import { PriceTicker } from "@/components/PriceTicker";
 import { LiveBlock } from "@/components/LiveBlock";
+import { BlockCubes } from "@/components/BlockCubes";
 import { StatsMore } from "@/components/StatsMore";
 import { getSettings, type Settings } from "@/lib/settings";
 import { getDaily, statsEnabled } from "@/lib/stats";
@@ -229,7 +230,12 @@ async function Price({ s }: { s: Settings }) {
 async function Feed({ s }: { s: Settings }) {
   const latest = await getLatest(s.net, s.native);
   const x = insightDicts[s.lang];
-  return <LiveFeed initial={latest} t={s.t} lang={s.lang} horizon={horizonHost(s.net)} tabs={{ blocks: x.blocksTab, activity: x.activityTab }} />;
+  return (
+    <>
+      <BlockCubes net={s.net} initial={latest.ledgers} labels={{ title: s.t.latestBlocks, ops: s.t.ops, txs: s.t.txs }} />
+      <LiveFeed initial={latest} t={s.t} lang={s.lang} horizon={horizonHost(s.net)} tabs={{ blocks: x.blocksTab, activity: x.activityTab }} />
+    </>
+  );
 }
 
 async function Insights({ s }: { s: Settings }) {

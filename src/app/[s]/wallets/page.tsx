@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { WalletBadge } from "@/components/WalletBadge";
@@ -10,7 +11,9 @@ import { Sparkline } from "@/components/Sparkline";
 import { getFlows, getWalletHistory, statsEnabled } from "@/lib/stats";
 
 export const revalidate = 300;
-export const metadata: Metadata = { title: "Known wallets" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Known wallets", "/wallets");
+}
 
 const TEXT = {
   en: {

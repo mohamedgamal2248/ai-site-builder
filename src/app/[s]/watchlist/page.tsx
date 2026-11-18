@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { Card, PageTitle } from "@/components/ui";
 import { WatchlistView } from "@/components/WatchlistView";
@@ -5,7 +6,9 @@ import { getSettings } from "@/lib/settings";
 import { NotifyButton } from "@/components/NotifyButton";
 
 export const revalidate = 86400;
-export const metadata: Metadata = { title: "Watchlist" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Watchlist", "/watchlist");
+}
 
 export default async function Watchlist({ params }: { params: Promise<{ s: string }> }) {
   const { t, lang, native, net } = await getSettings(params);

@@ -158,3 +158,18 @@ alter table push_subscriptions add column if not exists rule_state jsonb not nul
 alter table flows_hourly enable row level security;
 alter table signals_hourly enable row level security;
 alter table alerts enable row level security;
+
+-- Browser error reports (our own lightweight error monitoring), kept 14 days.
+create table if not exists client_errors (
+  id      bigint generated always as identity primary key,
+  at      timestamptz not null default now(),
+  message text not null,
+  stack   text,
+  path    text,
+  ua      text
+);
+create index if not exists client_errors_at on client_errors (at desc);
+alter table client_errors enable row level security;
+
+-- Alerts already posted to the Telegram channel.
+alter table alerts add column if not exists tg boolean not null default false;

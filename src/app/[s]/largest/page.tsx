@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { NotConfigured } from "@/components/NotConfigured";
@@ -9,7 +10,9 @@ import { getSettings } from "@/lib/settings";
 import { getLargest, statsEnabled, type LargeRow } from "@/lib/stats";
 
 export const revalidate = 120;
-export const metadata: Metadata = { title: "Largest transfers" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Largest transfers", "/largest");
+}
 
 const RANGES = { "24h": 24, "7d": 24 * 7, "30d": 24 * 30 } as const;
 

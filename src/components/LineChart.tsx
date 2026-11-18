@@ -19,8 +19,14 @@ const PAD_RIGHT = 10;
  * Single-series line with a light area wash, crosshair and tooltip. Fills its
  * container width; the first and last values are stated in the card text.
  */
-export function LineChart({ points, prefix = "", decimals = 4, locale, timeMode, ariaLabel }: { points: Point[]; prefix?: string; decimals?: number; locale: string; timeMode: "hour" | "dayhour" | "day"; ariaLabel: string }) {
+export function LineChart({ points: all, prefix = "", decimals = 4, locale, timeMode, ariaLabel }: { points: Point[]; prefix?: string; decimals?: number; locale: string; timeMode: "hour" | "dayhour" | "day"; ariaLabel: string }) {
   const [hover, setHover] = useState<number | null>(null);
+  // Drag across the chart to zoom into a window; the change over that window is shown above it.
+  const [win, setWin] = useState<[number, number] | null>(null);
+  const [drag, setDrag] = useState<[number, number] | null>(null);
+  const ar = locale.startsWith("ar");
+  const points = win ? all.slice(win[0], win[1] + 1) : all;
+  const offset = win ? win[0] : 0;
   const format = (v: number) => `${prefix}${v.toFixed(decimals)}`;
   const formatTime = (t: number) =>
     new Intl.DateTimeFormat(
@@ -49,26 +55,58 @@ export function LineChart({ points, prefix = "", decimals = 4, locale, timeMode,
   const ticks = [lo + pad, (lo + hi) / 2, hi - pad];
   const hp = hover !== null ? points[hover] : null;
 
-  const onMove = (clientX: number) => {
+  const indexAt = (clientX: number) => {
     const el = box.current;
-    if (!el) return;
+    if (!el) return 0;
     const r = el.getBoundingClientRect();
     const sx = ((clientX - r.left) / r.width) * W;
     const t = t0 + ((sx - PAD_LEFT) / (W - PAD_LEFT - PAD_RIGHT)) * (t1 - t0);
     let best = 0;
     for (let i = 1; i < points.length; i++) if (Math.abs(points[i].t - t) < Math.abs(points[best].t - t)) best = i;
-    setHover(best);
+    return best;
   };
+  const onMove = (clientX: number) => {
+    const i = indexAt(clientX);
+    setHover(i);
+    if (drag) setDrag([drag[0], i]);
+  };
+  const endDrag = () => {
+    if (drag && Math.abs(drag[1] - drag[0]) >= 3) {
+      const a = Math.min(drag[0], drag[1]) + offset;
+      const b = Math.max(drag[0], drag[1]) + offset;
+      setWin([a, b]);
+      setHover(null);
+    }
+    setDrag(null);
+  };
+  const first = points[0].v;
+  const last = points[points.length - 1].v;
+  const changePct = first ? ((last - first) / first) * 100 : 0;
+  const sel = drag && drag[0] !== drag[1] ? [Math.min(drag[0], drag[1]), Math.max(drag[0], drag[1])] : null;
 
   return (
+    <>
+    <div className="zoom-bar">
+      <span className="muted">{win ? `${formatTime(t0)} → ${formatTime(t1)}` : ar ? "اسحب على الرسم عشان تكبّر فترة" : "Drag across the chart to zoom in"}</span>
+      <span className={changePct >= 0 ? "up" : "down"}><bdi dir="ltr">{changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%</bdi></span>
+      {win ? <button type="button" className="zoom-reset" onClick={() => setWin(null)}>{ar ? "إعادة الضبط" : "Reset zoom"}</button> : null}
+    </div>
     <div
       className="chart line-chart"
       dir="ltr"
       ref={box}
-      onMouseMove={(e) => onMove(e.clientX)}
-      onMouseLeave={() => setHover(null)}
-      onTouchStart={(e) => onMove(e.touches[0].clientX)}
-      onTouchMove={(e) => onMove(e.touches[0].clientX)}
+      onPointerDown={(e) => {
+        const i = indexAt(e.clientX);
+        setHover(i);
+        setDrag([i, i]);
+      }}
+      onPointerMove={(e) => onMove(e.clientX)}
+      onPointerUp={endDrag}
+      onPointerCancel={() => setDrag(null)}
+      onPointerLeave={() => {
+        setHover(null);
+        setDrag(null);
+      }}
     >
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel} style={{ width: "100%", height: H }}>
         {ticks.map((v) => (
@@ -77,6 +115,7 @@ export function LineChart({ points, prefix = "", decimals = 4, locale, timeMode,
         <path d={area} className="area" />
         <path d={line} className="line" pathLength={1} vectorEffect="non-scaling-stroke" />
         {hp ? <line x1={x(hp.t)} x2={x(hp.t)} y1={PAD_TOP} y2={H - PAD_BOTTOM} className="crosshair" vectorEffect="non-scaling-stroke" /> : null}
+        {sel ? <rect x={x(points[sel[0]].t)} y={PAD_TOP} width={x(points[sel[1]].t) - x(points[sel[0]].t)} height={H - PAD_TOP - PAD_BOTTOM} className="zoom-sel" /> : null}
       </svg>
       <div className="line-axis">
         {ticks.map((v) => (
@@ -97,5 +136,6 @@ export function LineChart({ points, prefix = "", decimals = 4, locale, timeMode,
         </>
       ) : null}
     </div>
+    </>
   );
 }

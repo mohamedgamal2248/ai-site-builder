@@ -225,3 +225,79 @@ export function getReport(net: Network, day: string): Promise<DayReport> {
     };
   });
 }
+
+/* ---------- Weekly report ---------- */
+
+export interface WeekReport {
+  from: string;
+  to: string;
+  totals: { txs: number; failed: number; payments: number; volume: number; newAccounts: number; locked: number };
+  prevTotals: { txs: number; newAccounts: number; volume: number } | null;
+  exchNet: number | null;
+  foundOut: number | null;
+  indexAvg: number | null;
+  open: number | null;
+  close: number | null;
+  foundation: AlertRow[];
+  largest: DayReport["largest"];
+}
+
+/** The last 7 complete UTC days (ending yesterday), compared with the 7 days before. */
+export function getWeekReport(net: Network): Promise<WeekReport> {
+  const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const from = new Date(Date.parse(to) - 6 * 86_400_000).toISOString().slice(0, 10);
+  const prevFrom = new Date(Date.parse(from) - 7 * 86_400_000).toISOString().slice(0, 10);
+  return cached(`week:${net}:${to}`, 6 * 3600_000, async () => {
+    const sql = db();
+    const [cur, prev, flows, sig, foundation, largest, closes] = await Promise.all([
+      sql<{ txs: number; failed: number; payments: number; volume: string; accts: number; locked: string }[]>`
+        select coalesce(sum(txs), 0)::int as txs, coalesce(sum(failed_txs), 0)::int as failed, coalesce(sum(payments), 0)::int as payments,
+               coalesce(sum(payment_volume), 0)::text as volume, coalesce(sum(new_accounts), 0)::int as accts, coalesce(sum(locked_amount), 0)::text as locked
+        from daily_stats where net = ${net} and day between ${from}::date and ${to}::date`,
+      sql<{ txs: number; accts: number; volume: string; n: number }[]>`
+        select coalesce(sum(txs), 0)::int as txs, coalesce(sum(new_accounts), 0)::int as accts, coalesce(sum(payment_volume), 0)::text as volume, count(*)::int as n
+        from daily_stats where net = ${net} and day >= ${prevFrom}::date and day < ${from}::date`,
+      sql<{ n: number; net_in: string | null; found: string | null }[]>`
+        select count(*)::int as n, sum(exch_in - exch_out)::text as net_in, sum(found_out)::text as found
+        from flows_hourly where net = ${net} and hour >= ${from}::date and hour < ${to}::date + 1`,
+      sql<{ avg: string | null }[]>`
+        select avg(score)::text as avg from signals_hourly where net = ${net} and hour >= ${from}::date and hour < ${to}::date + 1`,
+      sql<AlertRow[]>`
+        select id, kind, to_char(at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as at, amount::text, from_acc, to_acc, tx_hash, meta
+        from alerts where net = ${net} and kind = 'foundation' and at >= ${from}::date and at < ${to}::date + 1 order by amount desc limit 10`,
+      sql<DayReport["largest"]>`
+        select op_id, tx_hash, from_acc, to_acc, amount::text, to_char(ledger_time at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as ledger_time
+        from large_payments where net = ${net} and ledger_time >= ${from}::date and ledger_time < ${to}::date + 1 order by amount desc limit 10`,
+      net === "mainnet" ? getDailyCloses(30) : Promise.resolve([]),
+    ]);
+    const c = cur[0];
+    const p = prev[0];
+    const before = closes.filter((x) => x.day < from).at(-1);
+    const end = closes.filter((x) => x.day <= to).at(-1);
+    return {
+      from,
+      to,
+      totals: { txs: c.txs, failed: c.failed, payments: c.payments, volume: Number(c.volume), newAccounts: c.accts, locked: Number(c.locked) },
+      prevTotals: p && p.n >= 7 ? { txs: p.txs, newAccounts: p.accts, volume: Number(p.volume) } : null,
+      exchNet: flows[0]?.n ? Number(flows[0].net_in) : null,
+      foundOut: flows[0]?.n ? Number(flows[0].found) : null,
+      indexAvg: sig[0]?.avg ? Number(sig[0].avg) : null,
+      open: before?.close ?? null,
+      close: end?.close ?? null,
+      foundation,
+      largest,
+    };
+  });
+}
+
+/* ---------- Network growth ---------- */
+
+export function getGrowth(net: Network) {
+  return cached(`growth:${net}`, 30 * 60_000, async () => {
+    const rows = await db()<{ day: string; txs: number; failed: number; accts: number; payments: number }[]>`
+      select to_char(day, 'YYYY-MM-DD') as day, txs, failed_txs as failed, new_accounts as accts, payments
+      from daily_stats where net = ${net} and day >= (now() at time zone 'utc')::date - 90 and day < (now() at time zone 'utc')::date
+      order by day`;
+    return rows.map((r) => ({ ...r }));
+  });
+}

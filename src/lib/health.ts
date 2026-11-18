@@ -59,6 +59,11 @@ export async function healthChecks(net: Network): Promise<Check[]> {
         }
         out.push({ name: `Backfill: ${s}`, state: r ? "ok" : "degraded", detail });
       }
+      // Browser errors reported by visitors in the last 24 hours (our own error monitoring).
+      const [e24] = await sql<{ n: number; last: string | null }[]>`
+        select count(*)::int as n, max(message) filter (where at = (select max(at) from client_errors)) as last
+        from client_errors where at > now() - interval '24 hours'`.catch(() => [{ n: 0, last: null }]);
+      out.push({ name: "Browser errors (24h)", state: e24.n > 50 ? "degraded" : "ok", detail: e24.n ? `${e24.n}${e24.last ? ` · ${e24.last.slice(0, 60)}` : ""}` : "0" });
     } catch (e) {
       out.push({ name: "Database", state: "down", detail: String((e as Error).message).slice(0, 80) });
     }

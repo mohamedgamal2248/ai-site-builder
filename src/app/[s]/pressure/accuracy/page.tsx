@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { NotConfigured } from "@/components/NotConfigured";
 import { Card, DataTable, PageTitle } from "@/components/ui";
@@ -8,7 +9,9 @@ import { getSettings } from "@/lib/settings";
 import { statsEnabled } from "@/lib/stats";
 
 export const revalidate = 3600;
-export const metadata: Metadata = { title: "Index track record" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Index track record", "/pressure/accuracy");
+}
 
 const pct = (v: number | null) => (v === null ? "—" : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)}%`);
 

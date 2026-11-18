@@ -5,17 +5,24 @@ import { NavMenu } from "./NavMenu";
 import { SearchBox } from "./SearchBox";
 import { ThemeToggle } from "./ThemeToggle";
 
-export function Header({ s }: { s: Settings }) {
-  const { t, lang, net } = s;
+/** Every page, grouped as in the menu (also feeds the Ctrl K search). */
+export function navGroups(s: Settings) {
+  const { t, lang } = s;
   const x = insightDicts[lang];
-  const insights: [string, string][] = [["/pressure", x.index], ["/pressure/accuracy", x.accuracy], ["/alerts", x.alerts], ["/radar", x.radar], ["/whale-tracker", x.whaleTracker], ["/depth", x.depth], ["/report", x.report], ["/news", x.news]];
-  const groups = [
+  const insights: [string, string][] = [["/pressure", x.index], ["/pressure/accuracy", x.accuracy], ["/alerts", x.alerts], ["/radar", x.radar], ["/whale-tracker", x.whaleTracker], ["/depth", x.depth], ["/report", x.report], ["/report/week", lang === "ar" ? "التقرير الأسبوعي" : "Weekly report"], ["/growth", lang === "ar" ? "نمو الشبكة" : "Network growth"], ["/news", x.news]];
+  return [
     { label: x.group, items: insights },
     { label: t.groupChain, items: [["/blocks", t.blocks], ["/txs", t.transactions], ["/operations", t.operations]] as [string, string][] },
     { label: t.groupStats, items: [["/stats", t.stats], ["/flows", t.flows], ["/whales", t.whales], ["/supply", t.supply], ["/unlocks", t.unlocks], ["/largest", t.largest], ["/locked", t.locked]] as [string, string][] },
     { label: t.groupTokens, items: [["/assets", t.assets], ["/pools", t.pools], ["/trades", t.trades]] as [string, string][] },
-    { label: t.groupTools, items: [["/wallets", t.wallets], ["/richlist", t.richlist], ["/watchlist", t.watchlist], ["/api-docs", t.apiDocs], ["/status", t.status]] as [string, string][] },
+    { label: t.groupTools, items: [["/wallets", t.wallets], ["/richlist", t.richlist], ["/watchlist", t.watchlist], ["/learn", lang === "ar" ? "تعلّم" : "Learn"], ["/widgets", lang === "ar" ? "ودجت لموقعك" : "Widget"], ["/api-docs", t.apiDocs], ["/status", t.status]] as [string, string][] },
   ];
+}
+
+export function Header({ s }: { s: Settings }) {
+  const { t, lang, net } = s;
+  const x = insightDicts[lang];
+  const groups = navGroups(s);
   const quick: [string, string][] = [["/", t.home], ["/pressure", x.index], ["/whales", t.whales], ["/flows", t.flows], ["/txs", t.transactions], ["/unlocks", t.unlocks]];
   return (
     <>
@@ -64,7 +71,7 @@ export function Footer({ s }: { s: Settings }) {
   const { t, lang } = s;
   const x = insightDicts[lang];
   const cols: [string, [string, string][]][] = [
-    [x.group, [["/pressure", x.index], ["/alerts", x.alerts], ["/radar", x.radar], ["/report", x.report], ["/news", x.news]]],
+    [x.group, [["/pressure", x.index], ["/alerts", x.alerts], ["/radar", x.radar], ["/report", x.report], ["/learn", lang === "ar" ? "تعلّم" : "Learn"]]],
     [t.footerExplore, [["/blocks", t.blocks], ["/txs", t.transactions], ["/operations", t.operations], ["/assets", t.assets]]],
     [t.footerStats, [["/stats", t.stats], ["/flows", t.flows], ["/whales", t.whales], ["/supply", t.supply], ["/unlocks", t.unlocks]]],
     [t.footerDevelopers, [["/api-docs", t.apiDocs], ["https://github.com/mohamedgamal2248/ai-site-builder", t.sourceCode], ["https://api.mainnet.minepi.com", t.dataSource]]],

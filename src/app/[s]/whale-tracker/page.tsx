@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { LineChart } from "@/components/LineChart";
 import { NotConfigured } from "@/components/NotConfigured";
@@ -10,7 +11,9 @@ import { getSettings } from "@/lib/settings";
 import { getWalletHistory, statsEnabled } from "@/lib/stats";
 
 export const revalidate = 600;
-export const metadata: Metadata = { title: "Whale tracker" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Whale tracker", "/whale-tracker");
+}
 
 function changeOver(points: { t: number; v: number }[], ms: number) {
   if (points.length < 2) return null;

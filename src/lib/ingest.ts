@@ -264,7 +264,7 @@ export async function applyPage(sql: Sql, net: Network, stream: Stream, records:
     if (alerts.length) {
       // Backfilled history is recorded as already pushed, so nobody gets notified about old events.
       const live = stream === "operations";
-      await tx`insert into alerts ${tx(alerts.map((a) => ({ ...a, meta: tx.json(a.meta as never), pushed: !live })))} on conflict do nothing`;
+      await tx`insert into alerts ${tx(alerts.map((a) => ({ ...a, meta: tx.json(a.meta as never), pushed: !live, tg: !live })))} on conflict do nothing`;
     }
     if (holders.size) {
       const rows = [...holders].filter((a) => /^G[A-Z2-7]{55}$/.test(a)).map((account) => ({ net, account, dirty: true }));
@@ -337,6 +337,8 @@ export async function ingestStream(sql: Sql, net: Network, stream: Stream, deadl
 /** Drops lockups whose unlock date has passed, so the table only ever holds future unlocks. */
 export async function pruneLockups(sql: Sql) {
   const r = await sql`delete from lockups where unlock_at is null or unlock_at <= now()`;
+  // Old browser error reports go too (the table may not exist in older test databases).
+  await sql`delete from client_errors where at < now() - interval '14 days'`.catch(() => null);
   return r.count;
 }
 

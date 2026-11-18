@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import { Ago } from "@/components/Ago";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -10,7 +11,9 @@ import { getSettings } from "@/lib/settings";
 import { getWhaleFeed, statsEnabled, type LargeRow } from "@/lib/stats";
 
 export const revalidate = 60;
-export const metadata: Metadata = { title: "Whale alerts" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Whale alerts", "/whales");
+}
 
 const MINS = [10_000, 100_000, 1_000_000] as const;
 

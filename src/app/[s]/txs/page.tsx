@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { TxTable } from "@/components/TxTable";
 import { Card, PageTitle, Pager } from "@/components/ui";
@@ -7,7 +8,9 @@ import { paged, readPageParams } from "@/lib/paging";
 import { getSettings } from "@/lib/settings";
 
 export const revalidate = 30;
-export const metadata: Metadata = { title: "Transactions" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Transactions", "/txs");
+}
 
 export default async function Txs({ params }: { params: Promise<{ s: string }> }) {
   const s = await getSettings(params);

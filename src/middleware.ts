@@ -61,5 +61,5 @@ export function middleware(req: NextRequest) {
 // Real files (public/ and generated metadata files) are left alone; any other path, including a
 // missing file like /old.png, goes to the pages so it gets the site's 404 page.
 export const config = {
-  matcher: ["/api/v1/:path*", "/((?!api/|_next/|search$|settings$|sitemap\\.xml$|robots\\.txt$|manifest\\.webmanifest$|sw\\.js$|icon\\.svg$|icons/).*)"],
+  matcher: ["/api/v1/:path*", "/((?!api/|_next/|_vercel/|search$|settings$|embed$|sitemap\\.xml$|robots\\.txt$|manifest\\.webmanifest$|sw\\.js$|icon\\.svg$|icons/).*)"],
 };

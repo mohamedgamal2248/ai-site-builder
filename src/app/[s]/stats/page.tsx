@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { BarChart } from "@/components/BarChart";
 import { NotConfigured } from "@/components/NotConfigured";
@@ -9,7 +10,9 @@ import type { SearchParams } from "@/lib/found";
 import { bucketDaily, getDaily, getSync, statsEnabled, type DailyRow } from "@/lib/stats";
 
 export const revalidate = 300;
-export const metadata: Metadata = { title: "Statistics" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Statistics", "/stats");
+}
 
 const RANGES = { "30d": [30, "day"], "90d": [90, "week"], "1y": [365, "month"] } as const;
 

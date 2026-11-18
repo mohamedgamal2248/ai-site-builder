@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import { Ago } from "@/components/Ago";
 import type { Metadata } from "next";
 import { AlertList } from "@/components/AlertList";
@@ -9,7 +10,9 @@ import { getSettings } from "@/lib/settings";
 import { statsEnabled } from "@/lib/stats";
 
 export const revalidate = 1800;
-export const metadata: Metadata = { title: "Pi news" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Pi news", "/news");
+}
 
 export default async function News({ params }: { params: Promise<{ s: string }> }) {
   const { t, net, lang, native } = await getSettings(params);

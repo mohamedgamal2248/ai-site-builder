@@ -38,10 +38,7 @@ function Icon({ k }: { k: keyof typeof icons }) {
 export function BottomNav({ labels }: { labels: { home: string; index: string; search: string; alerts: string; menu: string } }) {
   const path = usePathname();
   const on = (h: string) => (h === "/" ? path === "/" : path === h || path.startsWith(`${h}/`));
-  const focusSearch = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    document.querySelector<HTMLInputElement>(".search input")?.focus({ preventScroll: true });
-  };
+  const focusSearch = () => window.dispatchEvent(new Event("bp:search"));
   return (
     <nav className="bottom-nav" aria-label={labels.menu}>
       <Link href="/" className={on("/") ? "active" : undefined} aria-current={on("/") ? "page" : undefined}><Icon k="home" /><span>{labels.home}</span></Link>

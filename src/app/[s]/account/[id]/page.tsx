@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { NickButton } from "@/components/Nick";
+import { Countdown } from "@/components/Countdown";
 import QRCode from "qrcode";
 import { WatchButton } from "@/components/WatchButton";
 import { knownWallet } from "@/data/wallets";
@@ -71,6 +73,17 @@ export default async function AccountPage({ params }: { params: Params }) {
   const analytics = tab === "analytics" ? await accountAnalytics(net, id) : null;
   const nativeBal = account?.balances.find((b) => b.asset_type === "native");
   const reserved = account && ledger ? reservedPi(account, ledger.base_reserve_in_stroops) : 0;
+  // Nearest future unlock among the lockups this account owns.
+  const nextUnlock = locked.records
+    .filter((c) => c.asset === "native")
+    .map((c) => {
+      const owner = lockOwner(c.claimants.filter((x) => x.destination === id));
+      const at = owner ? unlockTime(owner.predicate) : null;
+      return at && Date.parse(at) > Date.now() ? { at, amount: Number(c.amount) } : null;
+    })
+    .filter((x): x is { at: string; amount: number } => !!x)
+    .sort((a, b) => a.at.localeCompare(b.at));
+  const soonest = nextUnlock[0] ? { at: nextUnlock[0].at, amount: nextUnlock.filter((n) => n.at === nextUnlock[0].at).reduce((sum, n) => sum + n.amount, 0) } : null;
   const lockedTotal = locked.records
     .filter((c) => c.asset === "native")
     .reduce((sum, c) => sum + Number(c.amount), 0);
@@ -88,6 +101,7 @@ export default async function AccountPage({ params }: { params: Params }) {
               </span>
             ) : null}
             <WatchButton id={id} labels={{ watch: t.watch, unwatch: t.unwatch }} />
+            <NickButton id={id} labels={lang === "ar" ? { name: "سمّي المحفظة", rename: "اسمها", prompt: "اسم خاص (بيتحفظ عندك بس)", save: "احفظ", remove: "امسح" } : { name: "Name this wallet", rename: "Named", prompt: "Private name (saved on this device only)", save: "Save", remove: "Remove" }} />
           </div>
           <Copyable value={id} label={t.copy} copied={t.copied} />
           {typeof sp.muxed === "string" && /^\d{1,20}$/.test(sp.muxed) ? (
@@ -135,6 +149,16 @@ export default async function AccountPage({ params }: { params: Params }) {
               <div className="hint">{locked.records.length} {lang === "ar" ? "رصيد" : locked.records.length === 1 ? "balance" : "balances"}</div>
             </div>
           </div>
+          {soonest ? (
+            <section className="card unlock-next">
+              <div>
+                <div className="label">{lang === "ar" ? "أقرب فك قفل" : "Next unlock"}</div>
+                <div className="value"><Amount value={soonest.amount.toFixed(7)} asset={native} max={2} /></div>
+                <div className="hint">{formatDate(soonest.at, lang)}{nextUnlock.length > 1 ? ` · ${lang === "ar" ? `و${nextUnlock.length - 1} رصيد تاني بعده` : `+${nextUnlock.length - 1} more later`}` : ""}</div>
+              </div>
+              <Countdown to={soonest.at} lang={lang} />
+            </section>
+          ) : null}
 
           <Card>
             <Facts

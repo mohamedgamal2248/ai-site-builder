@@ -1,10 +1,13 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { Card, DataTable, PageTitle } from "@/components/ui";
 import { healthChecks, type Check } from "@/lib/health";
 import { getSettings } from "@/lib/settings";
 
 export const revalidate = 60;
-export const metadata: Metadata = { title: "Status" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Status", "/status");
+}
 
 export default async function Status({ params }: { params: Promise<{ s: string }> }) {
   const { t, net } = await getSettings(params);

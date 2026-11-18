@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { AlertList } from "@/components/AlertList";
 import { NotConfigured } from "@/components/NotConfigured";
@@ -10,7 +11,9 @@ import { getSettings } from "@/lib/settings";
 import { getFlows, statsEnabled } from "@/lib/stats";
 
 export const revalidate = 120;
-export const metadata: Metadata = { title: "Foundation radar" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Foundation radar", "/radar");
+}
 
 export default async function Radar({ params }: { params: Promise<{ s: string }> }) {
   const { t, net, lang, native } = await getSettings(params);

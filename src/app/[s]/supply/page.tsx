@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { Card, DataTable, PageTitle } from "@/components/ui";
 import { knownWallets } from "@/data/wallets";
@@ -8,7 +9,9 @@ import { getSettings } from "@/lib/settings";
 import { backfillProgress, getLockedTotal, getSync, statsEnabled } from "@/lib/stats";
 
 export const revalidate = 300;
-export const metadata: Metadata = { title: "Supply" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Supply", "/supply");
+}
 
 interface Slice {
   key: string;

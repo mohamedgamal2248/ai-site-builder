@@ -1,0 +1,21 @@
+name: Smoke test after deploy
+
+# Runs when Vercel reports a successful production deployment (and on demand).
+on:
+  deployment_status:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm i --no-save --no-package-lock playwright@1 && npx playwright install --with-deps chromium
+      - run: node scripts/smoke.mjs
+        env:
+          SITE: https://ai-site-builder-peach.vercel.app

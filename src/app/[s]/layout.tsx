@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Footer, Header } from "@/components/Header";
+import { Footer, Header, navGroups } from "@/components/Header";
+import { CommandPalette } from "@/components/CommandPalette";
+import { ErrorReporter } from "@/components/ErrorReporter";
+import { InstallPrompt } from "@/components/InstallPrompt";
+import { extraDicts } from "@/lib/i18n-extra";
 import { notFound } from "next/navigation";
 import { BASE_SEGMENTS, getSettings } from "@/lib/settings";
 import { SwRegister } from "@/components/SwRegister";
@@ -22,10 +26,14 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
-  const { t } = await getSettings(params);
+  const s0 = await getSettings(params);
+  const { t } = s0;
   return {
     title: { default: `${t.siteName} · ${t.tagline}`, template: `%s · ${t.siteName}` },
-    description: t.disclaimer,
+    description:
+      s0.lang === "ar"
+        ? "مستكشف بلوكتشين Pi بالعربي: سعر Pi لحظة بلحظة، آخر البلوكات والمعاملات، تحركات الحيتان والفاونديشن والمنصات، ومؤشر ضغط Pi."
+        : "Pi Network blockchain explorer: live Pi price, blocks and transactions, whale, Foundation and exchange movements, and the Pi Pressure Index.",
     icons: { icon: "/icon.svg", apple: "/icons/icon-192.png" },
     metadataBase: new URL(process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app"),
   };
@@ -40,6 +48,26 @@ export const viewport: Viewport = {
   ],
 };
 
+// Vercel Web Analytics (cookie-free page views and countries), loaded straight from Vercel's
+// own path on this domain. Only on Vercel, so local runs and tests are not counted.
+const ANALYTICS = process.env.VERCEL ? "window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};" : "";
+
+const SITE = process.env.SITE_URL || "https://ai-site-builder-peach.vercel.app";
+/** Site-wide structured data: lets Google show the site name and a search box for it. */
+const siteJsonLd = (lang: "ar" | "en") => ({
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      name: "Blockchain Pi",
+      url: SITE,
+      inLanguage: lang,
+      potentialAction: { "@type": "SearchAction", target: `${SITE}/search?q={query}`, "query-input": "required name=query" },
+    },
+    { "@type": "Organization", name: "Blockchain Pi", url: SITE, logo: `${SITE}/icons/icon-512.png` },
+  ],
+});
+
 // Applies the saved theme before the first paint (the page itself is the same for everyone).
 const THEME_SCRIPT = `try{var m=document.cookie.match(/(?:^|; )theme=(light|dark)/);if(m)document.documentElement.dataset.theme=m[1]}catch(e){}`;
 
@@ -50,7 +78,9 @@ export default async function RootLayout({ children, params }: { children: React
   return (
     <html lang={s.lang} dir={s.lang === "ar" ? "rtl" : "ltr"} className={plex.variable} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + ANALYTICS }} />
+        {ANALYTICS ? <script defer src="/_vercel/insights/script.js" /> : null}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd(s.lang)) }} />
       </head>
       <body className={s.net === "testnet" ? "is-testnet" : undefined}>
         <NavProgress />
@@ -61,6 +91,9 @@ export default async function RootLayout({ children, params }: { children: React
         <Footer s={s} />
         <BottomNav labels={{ home: s.t.home, index: insightDicts[s.lang].indexShort, search: s.t.search, alerts: insightDicts[s.lang].alerts, menu: s.t.menu }} />
         <SwRegister />
+        <ErrorReporter />
+        <InstallPrompt labels={extraDicts[s.lang].install} />
+        <CommandPalette labels={extraDicts[s.lang].cmdk} lang={s.lang} pages={[["/", s.t.home], ...navGroups(s).flatMap((g) => g.items)]} />
       </body>
     </html>
   );

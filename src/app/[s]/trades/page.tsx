@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { AccountLink, Amount, Card, DataTable, Mono, PageTitle, Pager } from "@/components/ui";
 import { assetLabel, formatDate, shortId } from "@/lib/format";
@@ -7,7 +8,9 @@ import { paged, readPageParams } from "@/lib/paging";
 import { getSettings } from "@/lib/settings";
 
 export const revalidate = 60;
-export const metadata: Metadata = { title: "Trades" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Trades", "/trades");
+}
 
 function party(account?: string, pool?: string) {
   if (account) return <AccountLink id={account} />;

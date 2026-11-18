@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import type { Metadata } from "next";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { Card, DataTable, PageTitle } from "@/components/ui";
@@ -7,7 +8,9 @@ import { depthOf, getBooks, type Depth } from "@/lib/market";
 import { getSettings } from "@/lib/settings";
 
 export const revalidate = 60;
-export const metadata: Metadata = { title: "Market depth" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Market depth", "/depth");
+}
 
 export default async function DepthPage({ params }: { params: Promise<{ s: string }> }) {
   const { t, lang } = await getSettings(params);

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { ingestAll, shouldSkip } from "@/lib/ingest";
 import { checkRules, checkWatchlists } from "@/lib/push";
+import { telegramStep } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -23,6 +24,7 @@ export async function GET(req: NextRequest) {
   const out = await ingestAll(sql, ["mainnet"], 25_000, async (db, net, deadline) => ({
     watchlist: await checkWatchlists(db, net, deadline),
     rules: await checkRules(db, net),
+    telegram: await telegramStep(db, net).catch((e) => String(e).slice(0, 120)),
   }));
   return NextResponse.json(out, { headers: { "Cache-Control": "no-store" } });
 }

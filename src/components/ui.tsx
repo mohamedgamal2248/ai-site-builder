@@ -6,6 +6,7 @@ import { knownWallet } from "@/data/wallets";
 import { CopyButton } from "./CopyButton";
 import { WalletBadge } from "./WalletBadge";
 import { HoverLink } from "./HoverLink";
+import { Nick } from "./Nick";
 
 /** Monospace identifier that never flips direction in RTL pages. */
 export function Mono({ children, title }: { children: ReactNode; title?: string }) {
@@ -24,12 +25,14 @@ export function AccountLink({ id, full = false }: { id: string; full?: boolean }
       <HoverLink href={`/account/${id}`} className="id-link known" title={id}>
         <WalletBadge logo={known.logo} size={16} />
         <span>{known.label.split(" · ")[0]}</span>
+        <Nick id={id} />
       </HoverLink>
     );
   }
   return (
     <HoverLink href={`/account/${id}`} className="id-link">
       <Mono title={id}>{full ? id : shortId(id, 5, 5)}</Mono>
+      <Nick id={id} />
     </HoverLink>
   );
 }

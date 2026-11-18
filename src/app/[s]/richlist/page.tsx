@@ -1,3 +1,4 @@
+import { pageMeta } from "@/lib/seo";
 import { Ago } from "@/components/Ago";
 import type { Metadata } from "next";
 import { NotConfigured } from "@/components/NotConfigured";
@@ -7,7 +8,9 @@ import { getSettings } from "@/lib/settings";
 import { getHolders, statsEnabled, type HolderRow } from "@/lib/stats";
 
 export const revalidate = 300;
-export const metadata: Metadata = { title: "Top holders" };
+export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
+  return pageMeta(params, "Top holders", "/richlist");
+}
 
 export default async function RichList({ params }: { params: Promise<{ s: string }> }) {
   const { t, net, lang, native } = await getSettings(params);
