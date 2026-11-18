@@ -1,5 +1,7 @@
 "use client";
 
+import { tipPos } from "./tipPos";
+
 import { useRef, useState } from "react";
 
 export interface Point {
@@ -88,7 +90,7 @@ export function LineChart({ points, prefix = "", decimals = 4, locale, timeMode,
       {hp ? (
         <>
           <span className="dot-marker" style={{ left: `${(x(hp.t) / W) * 100}%`, top: y(hp.v) }} />
-          <div className="chart-tip" style={{ left: `${(x(hp.t) / W) * 100}%` }} role="status">
+          <div className="chart-tip" style={tipPos(x(hp.t) / W, `${(x(hp.t) / W) * 100}%`)} role="status">
             <strong>{format(hp.v)}</strong>
             <span>{formatTime(hp.t)}</span>
           </div>

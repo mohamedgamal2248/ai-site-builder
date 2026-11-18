@@ -1,5 +1,7 @@
 "use client";
 
+import { tipPos } from "./tipPos";
+
 import { useState } from "react";
 
 export interface Bar {
@@ -105,7 +107,7 @@ export function BarChart({ bars, locale, ariaLabel, warmPositive = false }: { ba
             })}
           </svg>
           {hover !== null && bars[hover] ? (
-            <div className="chart-tip" style={{ left: PAD_LEFT + slot * hover + slot / 2 }} role="status">
+            <div className="chart-tip" style={tipPos((PAD_LEFT + slot * hover + slot / 2) / W, `${PAD_LEFT + slot * hover + slot / 2}px`)} role="status">
               <strong>{bars[hover].display}</strong>
               <span>{bars[hover].label}</span>
             </div>

@@ -116,7 +116,7 @@ h1, h2, h3 { line-height: 1.25; margin: 0; }
 .net-long { display: none; }
 @media (min-width: 640px) { .net-long { display: inline; } .net-short { display: none; } }
 
-.search { position: relative; display: flex; padding-bottom: 10px; }
+.search { position: relative; display: flex; padding-bottom: 10px; --search-pb: 10px; }
 .search input {
   flex: 1; min-width: 0; height: 42px; padding: 0 48px 0 14px; border-radius: 12px; border: 1px solid var(--border);
   background: var(--bg); color: var(--text); font: inherit; font-size: 14px;
@@ -124,7 +124,8 @@ h1, h2, h3 { line-height: 1.25; margin: 0; }
 [dir="rtl"] .search input { padding: 0 14px 0 48px; }
 .search input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 .search button {
-  position: absolute; inset-inline-end: 4px; top: 4px; width: 34px; height: 34px; border: 0; border-radius: 9px;
+  /* Centred on the input whatever padding the form has. */
+  position: absolute; inset-inline-end: 4px; top: calc(50% - 17px - var(--search-pb, 0px) / 2); width: 34px; height: 34px; border: 0; border-radius: 9px;
   background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; cursor: pointer;
 }
 .search button svg { width: 18px; height: 18px; }
@@ -569,11 +570,11 @@ body { font-variant-numeric: tabular-nums; letter-spacing: 0; -webkit-font-smoot
 
 /* ---------- Header: one row on desktop, brand + toggles then search on phones ---------- */
 .header-top { flex-wrap: wrap; row-gap: 0; }
-.header-top .search { order: 3; flex: 1 0 100%; padding-top: 8px; padding-bottom: 0; }
+.header-top .search { order: 3; flex: 1 0 100%; padding: 0; --search-pb: 0px; margin-top: 8px; }
 @media (min-width: 900px) {
   .header-top { flex-wrap: nowrap; gap: 20px; }
   .brand { flex: none; }
-  .header-top .search { order: 0; flex: 1 1 auto; max-width: 620px; margin-inline: auto; padding: 0; }
+  .header-top .search { order: 0; flex: 1 1 auto; max-width: 620px; margin: 0 auto; padding: 0; }
 }
 .icon-pill { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); }
 .net-pill, .lang-pill { height: 38px; padding: 0 12px; }
@@ -743,7 +744,7 @@ body { font-variant-numeric: tabular-nums; letter-spacing: 0; -webkit-font-smoot
 .nf-pi { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 26px; font: 700 52px Georgia, serif; color: var(--gold); background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 35%, transparent); }
 .nf-err .nf-pi { font-family: inherit; }
 .nf-hint { font-size: 13.5px; }
-.nf-search { padding: 0; margin: 0 auto 16px; max-width: 440px; }
+.nf-search { padding: 0; --search-pb: 0px; margin: 0 auto 16px; max-width: 440px; }
 .nf-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .nf-links .btn { min-height: 40px; display: inline-flex; align-items: center; }
 .nf-note { font-size: 12px; margin: 14px 0 0; }

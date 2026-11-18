@@ -295,14 +295,14 @@ export interface IngestResult {
 }
 
 /** Runs one stream until it is caught up or the deadline passes. Backfills stop at their end cursor. */
-export async function ingestStream(sql: Sql, net: Network, stream: Stream, deadline: number): Promise<IngestResult> {
+export async function ingestStream(sql: Sql, net: Network, stream: Stream, deadline: number, maxPages = Infinity): Promise<IngestResult> {
   let cursor = await loadCursor(sql, net, stream);
   const end = stream.endsWith("_bf") ? await getState(sql, net, `${stream}_end`) : undefined;
   const base = baseOf(stream);
   let pages = 0;
   let total = 0;
   let caughtUp = false;
-  while (Date.now() < deadline) {
+  while (Date.now() < deadline && pages < maxPages) {
     if (end && BigInt(cursor || "0") >= BigInt(end)) {
       caughtUp = true;
       break;
@@ -390,6 +390,8 @@ export async function refreshHolders(sql: Sql, net: Network, max = 150) {
 
 export type MaintenanceHook = (sql: Sql, net: Network, deadline: number) => Promise<unknown>;
 
+const BACKFILL_PAGES = { claimable: 6, operations_bf: 6, ledgers_bf: 3 };
+
 /**
  * Live streams first (they are quick), then the heavy backfills share what is left, then
  * maintenance with a few seconds kept in reserve.
@@ -406,16 +408,20 @@ export async function ingestAll(sql: Sql, nets: Network[], budgetMs: number, ext
       results.push(await ingestStream(sql, net, stream, hardDeadline - reserve));
     }
   }
-  const heavy: [Stream, number][] = [["claimable", 0.4], ["operations_bf", 0.4], ["ledgers_bf", 0.2]];
+  /*
+   * History backfills are capped per run (pages of 200 records) so they trickle in steadily
+   * instead of burning ~6 s of CPU on every run: CPU time is the scarce resource on the free plan.
+   */
+  const heavy: [Stream, number, number][] = [["claimable", 0.4, BACKFILL_PAGES.claimable], ["operations_bf", 0.4, BACKFILL_PAGES.operations_bf], ["ledgers_bf", 0.2, BACKFILL_PAGES.ledgers_bf]];
   let backlog = false;
   for (const net of nets) {
     const left = hardDeadline - reserve - Date.now();
-    for (const [stream, share] of heavy) {
+    for (const [stream, share, maxPages] of heavy) {
       if (left <= 0) {
         backlog = true;
         break;
       }
-      const r = await ingestStream(sql, net, stream, Math.min(hardDeadline - reserve, Date.now() + left * share));
+      const r = await ingestStream(sql, net, stream, Math.min(hardDeadline - reserve, Date.now() + left * share), maxPages);
       results.push(r);
       if (!r.caughtUp) backlog = true;
     }
@@ -424,7 +430,7 @@ export async function ingestAll(sql: Sql, nets: Network[], budgetMs: number, ext
     maintenance[`${net}:pruned_lockups`] = await pruneLockups(sql);
     maintenance[`${net}:wallet_snapshots`] = await snapshotWallets(sql, net);
     // While history is still being filled the holder queue is long; afterwards a small batch keeps up.
-    const holderBatch = Date.now() > hardDeadline - 5000 ? 20 : backlog ? 150 : 50;
+    const holderBatch = Date.now() > hardDeadline - 5000 ? 10 : 40;
     maintenance[`${net}:holders_refreshed`] = await refreshHolders(sql, net, holderBatch);
     maintenance[`${net}:signals`] = await hourlySignals(sql, net).catch((e) => String(e).slice(0, 120));
     if (extra) maintenance[`${net}:extra`] = await extra(sql, net, hardDeadline);
@@ -437,9 +443,8 @@ export async function ingestAll(sql: Sql, nets: Network[], budgetMs: number, ext
 }
 
 /**
- * The scheduler calls every 2 minutes. While history is being filled every call works; once
- * everything is caught up, runs closer than `minGapSec` apart are skipped, so the effective
- * cadence drops to ~5 minutes and a skipped call costs a single small query.
+ * The scheduler calls every 5 minutes. A call that lands within `minGapSec` of the previous
+ * finished run (e.g. a manual or duplicate trigger) is skipped at the cost of one small query.
  */
 export async function shouldSkip(sql: Sql, net: Network, minGapSec = 270) {
   const rows = await sql<{ stream: string; cursor: string; age: number }[]>`
