@@ -82,13 +82,10 @@ export function getTopTotals(net: Network, hours = 24 * 30) {
 export function getUnlockPressure(net: Network) {
   return cached(`upress:${net}`, 10 * 60_000, async () => {
     const [r] = await db()<{ d7: string; d30: string; big: string | null; big_day: string | null }[]>`
-      with d as (
-        select date_trunc('day', unlock_at at time zone 'utc') as day, sum(amount) as amount
-        from lockups where net = ${net} and unlock_at > now() and unlock_at < now() + interval '30 days' group by 1
-      )
+      with d as (select day, amount from lockup_days where net = ${net} and day > (now() at time zone 'utc')::date and day <= (now() at time zone 'utc')::date + 30)
       select
-        (select coalesce(sum(amount), 0) from lockups where net = ${net} and unlock_at > now() and unlock_at < now() + interval '7 days')::text as d7,
-        (select coalesce(sum(amount), 0) from lockups where net = ${net} and unlock_at > now() and unlock_at < now() + interval '30 days')::text as d30,
+        (select coalesce(sum(amount), 0) from d where day <= (now() at time zone 'utc')::date + 7)::text as d7,
+        (select coalesce(sum(amount), 0) from d)::text as d30,
         (select amount::text from d order by amount desc limit 1) as big,
         (select to_char(day, 'YYYY-MM-DD') from d order by amount desc limit 1) as big_day`;
     const volume = await getVolumePi(300);

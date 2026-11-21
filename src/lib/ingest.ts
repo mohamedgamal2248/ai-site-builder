@@ -12,14 +12,15 @@
 import type postgres from "postgres";
 import { knownWallet, knownWallets } from "../data/wallets";
 import type { Sql } from "./db";
-import { lockOwner, unlockTime } from "./format";
-import { horizonHost, type ClaimableBalance, type Ledger, type Network, type Operation } from "./horizon";
+import { horizonHost, type Ledger, type Network, type Operation } from "./horizon";
 
 const PAGE = 200;
-export const STREAMS = ["ledgers", "operations", "claimable", "ledgers_bf", "operations_bf"] as const;
+// The lockup ("claimable") stream is retired: per-balance rows grew past the free database size,
+// so only a small summary is kept (lockup_days / lockup_top) and nothing fetches lockups any more.
+export const STREAMS = ["ledgers", "operations", "ledgers_bf", "operations_bf"] as const;
 export type Stream = (typeof STREAMS)[number];
-type Base = "ledgers" | "operations" | "claimable";
-const baseOf = (s: Stream): Base => (s.startsWith("ledgers") ? "ledgers" : s.startsWith("operations") ? "operations" : "claimable");
+type Base = "ledgers" | "operations";
+const baseOf = (s: Stream): Base => (s.startsWith("ledgers") ? "ledgers" : "operations");
 
 export function largeThreshold() {
   const n = Number(process.env.LARGE_PAYMENT_MIN || 10000);
@@ -53,7 +54,6 @@ const fetchRecords = async <T,>(net: Network, path: string, params: Record<strin
 const PATHS: Record<Base, { path: string; params: Record<string, string> }> = {
   ledgers: { path: "/ledgers", params: {} },
   operations: { path: "/operations", params: {} },
-  claimable: { path: "/claimable_balances", params: { asset: "native" } },
 };
 
 async function getState(sql: Sql, net: Network, stream: string) {
@@ -147,8 +147,6 @@ export async function applyPage(sql: Sql, net: Network, stream: Stream, records:
   };
   const alerts: Record<string, unknown>[] = [];
   const large: Record<string, unknown>[] = [];
-  const claimed: { id: string; at: string }[] = [];
-  const lockups: Record<string, unknown>[] = [];
   const now = Date.now();
 
   const transfer = (from: string | undefined, to: string | undefined, amount: number, at: string, op?: Operation) => {
@@ -222,18 +220,8 @@ export async function applyPage(sql: Sql, net: Network, stream: Stream, records:
         d.locked_amount += num(op.amount);
       } else if (op.type === "claim_claimable_balance") {
         d.claims += 1;
-        claimed.push({ id: String(op.balance_id), at: op.created_at });
         if (typeof op.claimant === "string") holders.add(op.claimant);
       }
-    }
-  } else {
-    for (const c of records as ClaimableBalance[]) {
-      if (c.asset !== "native") continue;
-      const owner = lockOwner(c.claimants);
-      const unlock = owner ? unlockTime(owner.predicate) : null;
-      // Only lockups that are still locked matter for the schedule; skipping the rest keeps the table small.
-      if (!unlock || Date.parse(unlock) <= now) continue;
-      lockups.push({ net, balance_id: c.id, claimant: owner?.destination ?? null, sponsor: null, amount: c.amount, unlock_at: unlock, created_at: c.last_modified_time });
     }
   }
 
@@ -271,15 +259,6 @@ export async function applyPage(sql: Sql, net: Network, stream: Stream, records:
       if (rows.length) await tx`insert into holders ${tx(rows)} on conflict (net, account) do update set dirty = true`;
     }
     if (large.length) await tx`insert into large_payments ${tx(large)} on conflict do nothing`;
-    for (const c of claimed) {
-      await tx`delete from lockups where net = ${net} and balance_id = ${c.id}`;
-    }
-    if (lockups.length) {
-      await tx`
-        insert into lockups ${tx(lockups)}
-        on conflict (net, balance_id) do update set
-          amount = excluded.amount, claimant = excluded.claimant, unlock_at = excluded.unlock_at`;
-    }
     if (last) await setState(tx, net, stream, last);
   });
   return { applied: records.length, cursor: last };
@@ -334,12 +313,10 @@ export async function ingestStream(sql: Sql, net: Network, stream: Stream, deadl
 
 /* ---------- Maintenance steps run after the streams ---------- */
 
-/** Drops lockups whose unlock date has passed, so the table only ever holds future unlocks. */
+/** Housekeeping: old browser error reports go after 14 days (the table may be missing in old test databases). */
 export async function pruneLockups(sql: Sql) {
-  const r = await sql`delete from lockups where unlock_at is null or unlock_at <= now()`;
-  // Old browser error reports go too (the table may not exist in older test databases).
-  await sql`delete from client_errors where at < now() - interval '14 days'`.catch(() => null);
-  return r.count;
+  const r = await sql`delete from client_errors where at < now() - interval '14 days'`.catch(() => null);
+  return r?.count ?? 0;
 }
 
 async function nativeBalance(net: Network, account: string): Promise<string | null> {
@@ -392,7 +369,7 @@ export async function refreshHolders(sql: Sql, net: Network, max = 150) {
 
 export type MaintenanceHook = (sql: Sql, net: Network, deadline: number) => Promise<unknown>;
 
-const BACKFILL_PAGES = { claimable: 6, operations_bf: 6, ledgers_bf: 3 };
+const BACKFILL_PAGES = { operations_bf: 6, ledgers_bf: 3 };
 
 /**
  * Live streams first (they are quick), then the heavy backfills share what is left, then
@@ -414,7 +391,7 @@ export async function ingestAll(sql: Sql, nets: Network[], budgetMs: number, ext
    * History backfills are capped per run (pages of 200 records) so they trickle in steadily
    * instead of burning ~6 s of CPU on every run: CPU time is the scarce resource on the free plan.
    */
-  const heavy: [Stream, number, number][] = [["claimable", 0.4, BACKFILL_PAGES.claimable], ["operations_bf", 0.4, BACKFILL_PAGES.operations_bf], ["ledgers_bf", 0.2, BACKFILL_PAGES.ledgers_bf]];
+  const heavy: [Stream, number, number][] = [["operations_bf", 0.6, BACKFILL_PAGES.operations_bf], ["ledgers_bf", 0.4, BACKFILL_PAGES.ledgers_bf]];
   let backlog = false;
   for (const net of nets) {
     const left = hardDeadline - reserve - Date.now();
@@ -429,7 +406,7 @@ export async function ingestAll(sql: Sql, nets: Network[], budgetMs: number, ext
     }
   }
   for (const net of nets) {
-    maintenance[`${net}:pruned_lockups`] = await pruneLockups(sql);
+    maintenance[`${net}:pruned_errors`] = await pruneLockups(sql);
     maintenance[`${net}:wallet_snapshots`] = await snapshotWallets(sql, net);
     // While history is still being filled the holder queue is long; afterwards a small batch keeps up.
     const holderBatch = Date.now() > hardDeadline - 5000 ? 10 : 40;

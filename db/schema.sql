@@ -41,25 +41,30 @@ create table if not exists large_payments (
 create index if not exists large_payments_time on large_payments (net, ledger_time desc);
 create index if not exists large_payments_amount on large_payments (net, amount desc);
 
--- Native Pi claimable balances (lockups). claimed_at is set when the owner claims it.
-create table if not exists lockups (
-  net        text not null,
-  balance_id text not null,
-  claimant   text,
-  sponsor    text,
-  amount     numeric(30, 7) not null,
-  unlock_at  timestamptz,
-  created_at timestamptz,
-  claimed_at timestamptz,
-  primary key (net, balance_id)
+-- Lockup summary: Pi that unlocks each day, and the biggest locked accounts. A snapshot taken from the
+-- per-balance index, which was removed (it outgrew the free database size) and is no longer fetched.
+create table if not exists lockup_days (
+  net    text not null,
+  day    date not null,
+  amount numeric(30, 7) not null,
+  n      integer not null,
+  primary key (net, day)
 );
-create index if not exists lockups_open_unlock on lockups (net, unlock_at) where claimed_at is null;
+create table if not exists lockup_top (
+  net         text not null,
+  claimant    text not null,
+  amount      numeric(30, 7) not null,
+  n           integer not null,
+  next_unlock timestamptz,
+  primary key (net, claimant)
+);
 
 -- The site only reads with the server key; block the public API roles entirely.
 alter table sync_state enable row level security;
 alter table daily_stats enable row level security;
 alter table large_payments enable row level security;
-alter table lockups enable row level security;
+alter table lockup_days enable row level security;
+alter table lockup_top enable row level security;
 
 -- Daily Pi in/out of each known wallet (exchanges, foundation, whales).
 create table if not exists wallet_flows_daily (

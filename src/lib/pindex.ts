@@ -99,7 +99,7 @@ export async function computeIndex(sql: Sql, net: Network, opts: { live?: boolea
     sql<{ hour: string; top_sum: string }[]>`
       select to_char(hour at time zone 'utc', 'YYYY-MM-DD"T"HH24:00:00"Z"') as hour, top_sum::text
       from signals_hourly where net = ${net} and hour >= now() - interval '31 days' and top_sum is not null order by hour`,
-    sql<{ amount: string }[]>`select coalesce(sum(amount), 0)::text as amount from lockups where net = ${net} and unlock_at > now() and unlock_at < now() + interval '7 days'`,
+    sql<{ amount: string }[]>`select coalesce(sum(amount), 0)::text as amount from lockup_days where net = ${net} and day > (now() at time zone 'utc')::date and day <= (now() at time zone 'utc')::date + 7`,
     sql<{ stream: string; cursor: string }[]>`select stream, cursor from sync_state where net = ${net} and stream in ('claimable', 'backlog')`,
   ]);
   const [books, volumePi] = opts.live === false ? [[], null] : await Promise.all([getBooks(60), getVolumePi(300)]);

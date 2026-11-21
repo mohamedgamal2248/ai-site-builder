@@ -91,34 +91,43 @@ export interface UnlockSummary {
   unlockedUnclaimedCount: number;
 }
 
-/** Native Pi that unlocks each month from now on, from lockups that have not been claimed. */
+/**
+ * Native Pi that unlocks each month from now on. Read from a small per-day summary taken from the
+ * lockup index (the per-balance rows were removed to keep the database small), so it is a
+ * snapshot: see getLockupSnapshot for its date.
+ */
 export function getUnlocks(net: Network, months = 24): Promise<UnlockSummary> {
   return cached(`unlocks:${net}:${months}`, 5 * 60_000, async () => {
     const sql = getDb()!;
     const [monthsRows, totals] = await Promise.all([
       sql<UnlockMonth[]>`
-        select to_char(date_trunc('month', unlock_at at time zone 'utc'), 'YYYY-MM') as month,
-               sum(amount)::text as amount, count(*)::int as count
-        from lockups
-        where net = ${net} and unlock_at > now()
-          and unlock_at < date_trunc('month', now()) + make_interval(months => ${months})
+        select to_char(date_trunc('month', day), 'YYYY-MM') as month, sum(amount)::text as amount, sum(n)::int as count
+        from lockup_days
+        where net = ${net} and day > (now() at time zone 'utc')::date
+          and day < date_trunc('month', now() at time zone 'utc')::date + make_interval(months => ${months})
         group by 1 order by 1`,
-      sql<{ locked: string; locked_n: number; free: string; free_n: number }[]>`
-        select coalesce(sum(amount) filter (where unlock_at > now()), 0)::text as locked,
-               (count(*) filter (where unlock_at > now()))::int as locked_n,
-               coalesce(sum(amount) filter (where unlock_at <= now()), 0)::text as free,
-               (count(*) filter (where unlock_at <= now()))::int as free_n
-        from lockups
-        where net = ${net}`,
+      sql<{ locked: string; locked_n: number }[]>`
+        select coalesce(sum(amount), 0)::text as locked, coalesce(sum(n), 0)::int as locked_n
+        from lockup_days where net = ${net} and day > (now() at time zone 'utc')::date`,
     ]);
     const t = totals[0];
     return {
       months: monthsRows,
       stillLocked: t.locked,
       stillLockedCount: t.locked_n,
-      unlockedUnclaimed: t.free,
-      unlockedUnclaimedCount: t.free_n,
+      // Not tracked any more: the index no longer follows claims.
+      unlockedUnclaimed: "0",
+      unlockedUnclaimedCount: 0,
     };
+  });
+}
+
+/** When the lockup summary was taken (ISO), or null if there is none. */
+export function getLockupSnapshot(net: Network) {
+  return cached(`lsnap:${net}`, 10 * 60_000, async () => {
+    const sql = getDb()!;
+    const [r] = await sql<{ cursor: string }[]>`select cursor from sync_state where net = ${net} and stream = 'lockups_snapshot'`;
+    return r?.cursor ?? null;
   });
 }
 
@@ -151,17 +160,16 @@ export interface LockedHolder {
   next_unlock: string | null;
 }
 
-/** Accounts with the most native Pi still locked (from indexed lockups). */
+/** Accounts with the most native Pi locked, from the snapshot's top-500 list. */
 export function getTopLocked(net: Network, limit = 25) {
   return cached(`toplocked:${net}:${limit}`, 5 * 60_000, async () => {
     const sql = getDb()!;
     return sql<LockedHolder[]>`
-      select claimant, sum(amount)::text as amount, count(*)::int as count,
-             to_char(min(unlock_at) at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as next_unlock
-      from lockups
-      where net = ${net} and unlock_at > now() and claimant is not null
-      group by claimant
-      order by sum(amount) desc
+      select claimant, amount::text as amount, n as count,
+             to_char(next_unlock at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as next_unlock
+      from lockup_top
+      where net = ${net} and next_unlock > now()
+      order by amount desc
       limit ${limit}`;
   });
 }
@@ -261,10 +269,10 @@ export function getUnlockCalendar(net: Network, days = 30) {
   return cached(`ucal:${net}:${days}`, 5 * 60_000, async () => {
     const sql = getDb()!;
     return sql<CalendarDay[]>`
-      select to_char(unlock_at at time zone 'utc', 'YYYY-MM-DD') as day, sum(amount)::text as amount, count(*)::int as count
-      from lockups
-      where net = ${net} and unlock_at > now() and unlock_at < now() + make_interval(days => ${days})
-      group by 1 order by 1`;
+      select to_char(day, 'YYYY-MM-DD') as day, amount::text as amount, n as count
+      from lockup_days
+      where net = ${net} and day > (now() at time zone 'utc')::date and day <= (now() at time zone 'utc')::date + ${days}::int
+      order by day`;
   });
 }
 
@@ -292,7 +300,7 @@ export function getLockedTotal(net: Network) {
   return cached(`locked:${net}`, 5 * 60_000, async () => {
     const sql = getDb()!;
     const [r] = await sql<{ amount: string; n: number }[]>`
-      select coalesce(sum(amount), 0)::text as amount, count(*)::int as n from lockups where net = ${net} and unlock_at > now()`;
+      select coalesce(sum(amount), 0)::text as amount, coalesce(sum(n), 0)::int as n from lockup_days where net = ${net} and day > (now() at time zone 'utc')::date`;
     return r;
   });
 }

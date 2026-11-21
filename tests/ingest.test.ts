@@ -32,7 +32,6 @@ describe.skipIf(!url)("applyPage (Postgres)", () => {
     await sql.unsafe(readFileSync(new URL("../db/schema.sql", import.meta.url), "utf8"));
     await sql`delete from daily_stats where net = ${net}`;
     await sql`delete from large_payments where net = ${net}`;
-    await sql`delete from lockups where net = ${net}`;
     await sql`delete from sync_state where net = ${net}`;
     await sql`delete from wallet_flows_daily where net = ${net}`;
     await sql`delete from holders where net = ${net}`;
@@ -55,16 +54,7 @@ describe.skipIf(!url)("applyPage (Postgres)", () => {
     expect(c.cursor).toBe("3");
   });
 
-  it("counts payments, keeps large ones, records lockups and marks claims", async () => {
-    await applyPage(sql, net, "claimable", [
-      {
-        id: "bal1", paging_token: "10-bal1", asset: "native", amount: "500.0000000", last_modified_time: "2026-11-17T09:00:00Z",
-        claimants: [
-          { destination: "GSENDER", predicate: { abs_before: "2026-12-01T00:00:00Z" } },
-          { destination: "GOWNER", predicate: { not: { abs_before: "2027-03-15T00:00:00Z" } } },
-        ],
-      },
-    ]);
+  it("counts payments, keeps large ones and counts claims", async () => {
     await applyPage(
       sql, net, "operations",
       [
@@ -79,9 +69,6 @@ describe.skipIf(!url)("applyPage (Postgres)", () => {
     expect(d).toEqual({ payments: 2, v: "50003.5000000", new_accounts: 1, claims: 1 });
     const large = await sql`select op_id, amount::text from large_payments where net = ${net}`;
     expect(large).toEqual([{ op_id: "op1", amount: "50000.0000000" }]);
-    // A claimed lockup is removed; the table only holds what is still locked.
-    const left = await sql`select 1 from lockups where net = ${net} and balance_id = 'bal1'`;
-    expect(left.length).toBe(0);
     const holders = await sql`select account from holders where net = ${net} order by account`;
     expect(holders.map((h) => h.account)).toEqual(["GALYJFJ5SVD45FBWN2GT4IW67SEZ3IBOFSBSPUFCWV427NBNLG3PXEQU", "GASWBDATCXXIUGHR7DWSFAAONZB2L5NFMBTDCYQQ2TQLRQNCTKJ2AODM"]);
     const flows = await sql`select address, inflow::text, outflow::text from wallet_flows_daily where net = ${net} order by address`;

@@ -12,7 +12,7 @@ import { AccountLink } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import { insightDicts } from "@/lib/i18n-insights";
 import { getUnlockPressure } from "@/lib/insights";
-import { backfillProgress, getSync, getTopLocked, getUnlockCalendar, getUnlocks, statsEnabled, type LockedHolder, type UnlockMonth } from "@/lib/stats";
+import { backfillProgress, getSync, getTopLocked, getLockupSnapshot, getUnlockCalendar, getUnlocks, statsEnabled, type LockedHolder, type UnlockMonth } from "@/lib/stats";
 
 export const revalidate = 300;
 export async function generateMetadata({ params }: { params: Promise<{ s: string }> }): Promise<Metadata> {
@@ -29,7 +29,7 @@ export default async function Unlocks({ params }: { params: Promise<{ s: string 
       </>
     );
   }
-  const [u, sync, ledger, top, cal, pressure, all] = await Promise.all([
+  const [u, sync, ledger, top, cal, pressure, all, snapshot] = await Promise.all([
     getUnlocks(net, 24),
     getSync(net),
     horizon.ledgers(net, { limit: 1 }).then((p) => p.records[0]),
@@ -37,6 +37,7 @@ export default async function Unlocks({ params }: { params: Promise<{ s: string 
     getUnlockCalendar(net, 30),
     getUnlockPressure(net).catch(() => null),
     getUnlocks(net, 120),
+    getLockupSnapshot(net).catch(() => null),
   ]);
   // Charts: share by year (three largest years + the rest), the biggest month's share,
   // the top months ranked, and the running total of Pi unlocking over time.
@@ -81,7 +82,7 @@ export default async function Unlocks({ params }: { params: Promise<{ s: string 
           <div className="label">{t.coverage}</div>
           <div className="value"><bdi dir="ltr">{progress.toFixed(1)}%</bdi></div>
           <div className="progress" aria-hidden="true"><span style={{ width: `${progress}%` }} /></div>
-          {progress < 99.9 ? <div className="hint">{t.coverageNote}</div> : null}
+          {progress < 99.9 ? <div className="hint">{t.coverageNote}{snapshot ? ` (${snapshot.slice(0, 10)})` : ""}</div> : null}
         </div>
       </div>
       {pressure ? (

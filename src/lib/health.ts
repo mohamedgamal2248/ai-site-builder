@@ -51,7 +51,7 @@ export async function healthChecks(net: Network, fresh = true): Promise<Check[]>
           detail: r ? `${Math.round(r.age / 60)} min` : "not started",
         });
       }
-      for (const s of ["claimable", "ledgers_bf", "operations_bf"]) {
+      for (const s of ["ledgers_bf", "operations_bf"]) {
         const r = rows.find((x) => x.stream === s);
         const end = rows.find((x) => x.stream === `${s}_end`);
         let detail = r ? "running" : "not started";
